@@ -18,11 +18,11 @@ class Speaker:
         try:
             self.SPEAKER.set_pitch(NOTES[note])
             self.SPEAKER.update_audio()
-            self.SPEAKER.play().wait_done()
+            self.SPEAKER.play()
                 
         except KeyboardInterrupt:
             print("\nCode interrupted")
-            self.stop_note()
+            self.__stop_note()
 
     def __stop_note(self):
         self.SPEAKER.stop()
