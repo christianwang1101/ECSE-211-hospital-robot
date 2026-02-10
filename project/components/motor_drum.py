@@ -18,7 +18,7 @@ class DrumMotor:
         self.drum_running = False
         self.stop_event = None
         self.drum_thread = None
-        print("Initialized motor")
+        print("MOTOR: Initialized motor")
 
     def __initialize_motor(self):
         # Reset encoder to set current position as 0 degrees
@@ -30,7 +30,7 @@ class DrumMotor:
         self.drum_running = True
         self.drum_thread = threading.Thread(target=self.__drumming_worker, daemon=True)
         self.drum_thread.start()
-        print("Starting drumming")
+        print("MOTOR: Starting drumming")
 
     def __drumming_worker(self):
         rest_amount = 60 / self.tempo
@@ -55,7 +55,7 @@ class DrumMotor:
         if self.stop_event:
             self.stop_event.set()
         self.MOTOR.set_position_relative(0)
-        print("Stopping drumming")
+        print("MOTOR: Stopping drumming")
 
     def cleanup(self):
         self.__stop_drumming()

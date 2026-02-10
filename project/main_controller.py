@@ -39,15 +39,17 @@ def run_digital_flute():
 
         while not stop_event.is_set():
             if touch.stop_pressed():
+                print("CONTROLLER: stopped")
                 stop_event.set()
                 break
 
             # play note based on ultrasonic reading
             note = note_reader.get_note()
             if note:
+                print(f"CONTROLLER: got note, playing {note}")
                 speaker.play_note(note)
-
-            time.sleep(0.05)
+ 
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("\nShutting down...")
