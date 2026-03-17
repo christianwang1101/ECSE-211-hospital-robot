@@ -1,8 +1,8 @@
 from utils.brick import EV3ColorSensor, wait_ready_sensors
 from time import sleep
-import keyboard
 
-COLOUR_SENSOR_DATA_FILE = "../data_analysis/colour_sensor_data.csv"
+
+COLOUR_SENSOR_DATA_FILE = "../colour_sensor_data.csv"
 COLOUR_SENSOR = EV3ColorSensor(3)
 COLOUR_MAP = {}
 
@@ -14,17 +14,12 @@ wait_ready_sensors(True)
 print("Finished initialization. Sensor is ready.")
 
 # run for each of the colours
-for color in ["red", "green", "blue", "yellow", "orange"]:
-    print("Hold the {} block in front of the sensor for 3 seconds. When you're done, press Enter...".format(color))
-    sleep(3) 
+for color in ["red", "green", "blue", "yellow", "orange", "black", "white", "black&white"]:
+    print("Hold the {} block in front of the sensor for 3 seconds.".format(color))
+    sleep(10) 
     print("Starting data collection...")
 
-    # get the color data
-    while True:
-        # detect if enter is pressed then exit
-        if keyboard.is_pressed('enter'):
-            print("Data collection stopped.")
-            break
+    for i in range(100):
 
         # collect colour until enter is pressed
         color_data = COLOUR_SENSOR.get_value()
@@ -59,6 +54,8 @@ for color in ["red", "green", "blue", "yellow", "orange"]:
 
         COLOUR_MAP.update({color: (avg_red, avg_green, avg_blue, avg_intensity)})
 
+    print("Done colour")
+    
 # write the data to a csv file
 with open(COLOUR_SENSOR_DATA_FILE, "w") as f:
     f.write("colour,red,green,blue,intensity\n")
