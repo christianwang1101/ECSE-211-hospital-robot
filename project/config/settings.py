@@ -12,6 +12,5 @@ COLOUR_READINGS_MAP = {
 }
 
 COLOUR_LUMINOSITY_MAP = {
-    (0, 50): "BLACK",
-    (700, 1000): "WHITE"
+    (400, 1000): "WHITE"
 }
