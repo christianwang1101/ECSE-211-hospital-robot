@@ -4,7 +4,6 @@ import threading
 import time
 
 # Initialize hardware
-COLOUR_SENSOR = EV3ColorSensor(1)
 GYRO_SENSOR = EV3GyroSensor(2)
 ULTRASONIC_SENSOR = EV3UltrasonicSensor(3)
 wait_ready_sensors()
@@ -14,7 +13,8 @@ print("Finished initialization.")
 def start_navigation():
     try:
         #TODO: add scooper function to pick up blocks initiailly
-        navigate_hallway()
+        navigate_hallway(distance_wall=10, num_black_lines=3, straight_angle=-90)
+        
         
     except KeyboardInterrupt:
         print("\nShutting down...")
@@ -23,12 +23,11 @@ def start_navigation():
         exit()
 
 
-
 def navigate_hallway(distance_wall, num_black_lines, straight_angle):
     """
    Navigates the robot through the hallways of the obstacle course
     Parameters:
-    - distance_wall: distance the robot should be from the left wall to enter the room
+    - distance_wall (cm): distance the robot should be from the left wall to enter the room
     correctly
     - num_black_lines: number of black lines the robot should travel over before
     entering the room
@@ -36,6 +35,8 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
     for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
     would be based of this paramter to make sure the robot is travelling straight
     """
+    while True:
+        if 
 
 def navigate_single_room(min_distance_wall, straight_angle):
     """
