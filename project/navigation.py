@@ -55,6 +55,7 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
       # act on values
       if distance < 15:
           # TODO: stop_motors()
+          # test comment
       elif colour == "RED":
           # TODO: turn_to_target()
       else:
