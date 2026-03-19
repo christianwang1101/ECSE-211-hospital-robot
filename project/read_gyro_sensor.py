@@ -1,6 +1,7 @@
 from utils.brick import EV3GyroSensor
 from time import sleep
 from config.settings import PORT_GYRO
+import threading
 
 DPS_DEADBAND = 2
 POLL_INTERVAL = 0.05  # seconds
@@ -18,7 +19,23 @@ class GyroSensor:
             raise RuntimeError("Could not read gyro origin value.")
         self._origin, _ = origin_reading
         self._angle = 0
+        self._lock = threading.Lock()
         print("Finished initializing gyro sensor")
+
+    def start(self):
+        t = threading.Thread(target=self._poll, daemon=True)
+        t.start()
+
+    def _poll(self):
+        while True:
+            angle = self.read_angle()
+            with self._lock:
+                self._angle = angle
+            sleep(POLL_INTERVAL)
+
+    def get_angle(self):
+        with self._lock:
+            return self._angle
 
     def read_angle(self):
         """Poll the gyro sensor and return the current angle (degrees) relative

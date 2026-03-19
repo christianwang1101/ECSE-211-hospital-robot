@@ -3,6 +3,7 @@ from time import sleep
 from config.settings import PORT_COLOR_SENSOR, COLOUR_READINGS_MAP, COLOUR_LUMINOSITY_MAP
 from collections import Counter
 import math
+import threading
 
 class ColourSensor:
     SAMPLE_SIZE = 5
@@ -12,7 +13,23 @@ class ColourSensor:
     def __init__(self):
         self._sensor = EV3ColorSensor(PORT_COLOR_SENSOR)
         wait_ready_sensors(True)
+        self._colour = None
+        self._lock = threading.Lock()
         print("Finished initializing colour sensor")
+
+    def start(self):
+        t = threading.Thread(target=self._poll, daemon=True)
+        t.start()
+
+    def _poll(self):
+        while True:
+            colour = self.read_colour()
+            with self._lock:
+                self._colour = colour
+
+    def get_colour(self):
+        with self._lock:
+            return self._colour
 
     def _normalize(self, color_data):
         r, g, b = color_data[:3]
