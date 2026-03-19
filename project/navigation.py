@@ -1,16 +1,24 @@
 from components.motor_drum import DrumMotor
-from utils.brick import EV3ColorSensor, EV3GyroSensor, EV3UltrasonicSensor, wait_ready_sensors, reset_brick
+from read_colour_sensor import ColourSensor
+from read_gyro_sensor import GyroSensor
+from read_us_sensor import UltrasonicSensor
+
 import threading
 import time
 
 # Initialize hardware
-GYRO_SENSOR = EV3GyroSensor(2)
-ULTRASONIC_SENSOR = EV3UltrasonicSensor(3)
-wait_ready_sensors()
+COLOUR_SENSOR = ColourSensor
+GYRO_SENSOR = GyroSensor
+US_SENSOR = UltrasonicSensor
 
 print("Finished initialization.")
 
 def start_navigation():
+    # start sensors
+    COLOUR_SENSOR.start()
+    GYRO_SENSOR.start()
+    US_SENSOR.start()
+    
     try:
         #TODO: add scooper function to pick up blocks initiailly
         navigate_hallway(distance_wall=10, num_black_lines=3, straight_angle=-90)
@@ -36,7 +44,21 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
     would be based of this paramter to make sure the robot is travelling straight
     """
     while True:
-        if 
+      colour   = COLOUR_SENSOR.get_colour()
+      angle    = GYRO_SENSOR.get_angle()
+      distance = US_SENSOR.get_distance()
+
+      if colour is None or angle is None or distance is None:
+          time.sleep(0.05)
+          continue  # wait for first readings to come in
+
+      # act on values
+      if distance < 15:
+          # TODO: stop_motors()
+      elif colour == "RED":
+          # TODO: turn_to_target()
+      else:
+          # TODO: move_forward()
 
 def navigate_single_room(min_distance_wall, straight_angle):
     """
