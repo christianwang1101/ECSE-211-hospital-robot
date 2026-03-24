@@ -71,10 +71,10 @@ def navigate_hallway(
             pass
 
         elif distance < (distance_wall - distance_error_margin):
-            move_right()
+            turn_to(straight_angle + 5)
 
         elif distance > (distance_wall + distance_error_margin):
-            move_left()
+            turn_to(straight_angle - 5)
 
         elif distance < 15:
             # TODO: stop_motors()
@@ -121,15 +121,15 @@ def swivel(max_swivels):
     - true -> GREEN detected (target found)
     - false -> RED detected OR no target found after all sweeps
     """
-    # Keep argument for compatibility with existing callers; this routine runs fixed 10 turns.
-    _ = max_swivels
 
-    # Motor ports
-    left_motor = Motor("A")
-    right_motor = Motor("B")
-
-    # Stop swivelling if either colour is detected, but keep different return values.
-    target_colours = {"GREEN", "RED"}
+    def target_state():
+        # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
+        colour = COLOUR_SENSOR.get_colour()
+        if colour == "GREEN":
+            return True
+        if colour == "RED":
+            return False
+        return None
 
     # Wait briefly until gyro has a valid baseline angle.
     center_angle = GYRO_SENSOR.get_angle()
@@ -142,92 +142,31 @@ def swivel(max_swivels):
     if center_angle is None:
         return False
 
-    # Set safe speed caps for smoother turning and forward nudges.
-    left_motor.set_limits(dps=180)
-    right_motor.set_limits(dps=180)
+    LEFT_MOTOR.set_limits(dps=180)
+    RIGHT_MOTOR.set_limits(dps=180)
 
-    def stop_drive():
-        # Hard stop both motors so each step starts from a known state.
-        left_motor.set_dps(0)
-        right_motor.set_dps(0)
-
-    def target_state():
-        # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
-        colour = COLOUR_SENSOR.get_colour()
-        if colour == "GREEN":
-            return True
-        if colour == "RED":
-            return False
-        return None
-
-    def angle_error(target, current):
-        # Compute shortest signed error in degrees in range [-180, 180].
-        return ((target - current + 540) % 360) - 180
-
-    def turn_to(target_angle, timeout=1.5):
-        # Turn in place using gyro feedback until robot is near desired heading.
-        turn_start = time.time()
-        while time.time() - turn_start < timeout:
-            state = target_state()
-            if state is not None:
-                stop_drive()
-                return state
-
-            current_angle = GYRO_SENSOR.get_angle()
-            if current_angle is None:
-                time.sleep(0.02)
-                continue
-
-            error = angle_error(target_angle, current_angle)
-
-            # Stop turning once heading error is small enough.
-            if abs(error) <= 2:
-                break
-
-            # Positive error: need more left turn. Negative error: need more right turn.
-            if error > 0:
-                left_motor.set_dps(-110)
-                right_motor.set_dps(110)
-            else:
-                left_motor.set_dps(110)
-                right_motor.set_dps(-110)
-
-            time.sleep(0.02)
-
-        stop_drive()
-        return target_state()
-
-    def move_forward_briefly():
-        # Move forward a little after each turn (0.5s as requested).
-        left_motor.set_dps(140)
-        right_motor.set_dps(140)
-        time.sleep(0.5)
-        stop_drive()
-
-    # Define left/right look angles 20 degrees around the initial straight heading.
-    # Going from left_target to right_target is a 40 degree sweep across the center line.
     left_target = center_angle + 20
     right_target = center_angle - 20
 
-    # Run exactly 10 turns total: 5 left turns and 5 right turns.
-    for _ in range(5):
-        state = turn_to(left_target)
+    for _ in range(max_swivels):
+        turn_to(left_target)
+        state = target_state()
         if state is not None:
             return state
-        move_forward_briefly()
+        move_straight(distance_cm=2.5, speed_dps=140)
         state = target_state()
         if state is not None:
             return state
 
-        state = turn_to(right_target)
+        turn_to(right_target)
+        state = target_state()
         if state is not None:
             return state
-        move_forward_briefly()
+        move_straight(distance_cm=2.5, speed_dps=140)
         state = target_state()
         if state is not None:
             return state
 
-    # Completed all turns without finding target colours.
     return False
 
 
@@ -235,14 +174,6 @@ def drop_off_block():
     # some code to drop off the block at this position, will prob
     # be called by
     print("MOTOR: drop off block")
-
-
-def move_right():
-    print("MOTOR: move right")
-
-
-def move_left():
-    print("MOTOR: move left")
 
 
 def move_straight(distance_cm, speed_dps):
@@ -272,42 +203,39 @@ def move_straight(distance_cm, speed_dps):
     RIGHT_MOTOR.set_dps(0)
 
 
-def rotate_to_angle(target_angle, speed_dps=100, wait_time=0):
+def turn_to(target_angle, speed_dps=110, timeout=1.5, wait_time=0):
     """
-    Rotate the robot in place to reach a target angle using the gyro sensor.
+    Turn the robot in place to a target heading using gyro feedback.
 
     Parameters:
-    - target_angle: the desired angle in degrees (relative to starting position)
+    - target_angle: desired heading in degrees (relative to starting position)
     - speed_dps: rotation speed in degrees per second
+    - timeout: max seconds to spend turning before giving up
     - wait_time: time to wait in seconds after reaching the target angle
     """
-    current_angle = GYRO_SENSOR.get_angle()
-    if current_angle is None:
-        print("Gyro sensor not ready")
-        return
+    turn_start = time.time()
+    while time.time() - turn_start < timeout:
+        current_angle = GYRO_SENSOR.get_angle()
+        if current_angle is None:
+            time.sleep(0.02)
+            continue
 
-    angle_difference = target_angle - current_angle
+        error = ((target_angle - current_angle + 540) % 360) - 180
+        if abs(error) <= 2:
+            break
 
-    # Determine direction: positive difference = turn right, negative = turn left
-    if angle_difference > 0:
-        # Turn right: left motor forward, right motor backward
-        LEFT_MOTOR.set_dps(speed_dps)
-        RIGHT_MOTOR.set_dps(-speed_dps)
-    else:
-        # Turn left: left motor backward, right motor forward
-        LEFT_MOTOR.set_dps(-speed_dps)
-        RIGHT_MOTOR.set_dps(speed_dps)
+        if error > 0:
+            LEFT_MOTOR.set_dps(-speed_dps)
+            RIGHT_MOTOR.set_dps(speed_dps)
+        else:
+            LEFT_MOTOR.set_dps(speed_dps)
+            RIGHT_MOTOR.set_dps(-speed_dps)
 
-    # Wait until we reach the target angle (with some tolerance) # if angle is not between +- 2 degrees of target angle, motor will keep turning
-    tolerance = 2  # degrees
-    while abs(GYRO_SENSOR.get_angle() - target_angle) > tolerance:
-        time.sleep(0.05)
+        time.sleep(0.02)
 
-    # Stop motors
     LEFT_MOTOR.set_dps(0)
     RIGHT_MOTOR.set_dps(0)
 
-    # Wait the specified time
     if wait_time > 0:
         time.sleep(wait_time)
 
@@ -325,25 +253,25 @@ def navigate_pharmacy():
     wait_time = 2  # seconds
 
     # Rotate right to X degrees, wait
-    rotate_to_angle(x_degrees, wait_time=wait_time)
+    turn_to(x_degrees, wait_time=wait_time)
 
     # Go back to 0 degrees
-    rotate_to_angle(0)
+    turn_to(0)
 
     # Rotate left to -X degrees, wait
-    rotate_to_angle(-x_degrees, wait_time=wait_time)
+    turn_to(-x_degrees, wait_time=wait_time)
 
     # Go back to 0 degrees
-    rotate_to_angle(0)
+    turn_to(0)
 
     # Rotate 180 degrees to face the opposite direction
-    rotate_to_angle(180)
+    turn_to(180)
 
     # Move back the way we started (same distance, opposite direction)
     move_straight(distance_cm=20, speed_dps=200)
 
     # Final right rotation
-    rotate_to_angle(90)
+    turn_to(90)
 
     # TODO: Add more navigation logic for the pharmacy area\
 
@@ -351,7 +279,7 @@ def navigate_pharmacy():
 def drop_off_block():
     # some code to drop off the block at this position, will prob
     # be called by
-    pass
+    print("Dropping off blocks")
 
 
 if __name__ == "__main__":
