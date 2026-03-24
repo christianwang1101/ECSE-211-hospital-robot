@@ -1,7 +1,7 @@
 from utils.brick import reset_brick
-from read_colour_sensor import ColourSensor
-from read_gyro_sensor import GyroSensor
-from read_us_sensor import UltrasonicSensor
+from components.colour_sensor import ColourSensor
+from components.gyro_sensor import GyroSensor
+from components.ultrasonic_sensor import UltrasonicSensor
 from utils.brick import Motor
 from config.settings import (
     PORT_LEFT_MOTOR,
