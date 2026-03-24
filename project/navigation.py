@@ -97,8 +97,8 @@ def swivel(max_swivels):
     - max_swivels: max number of times the robot will rotate back & forth before
     termination
     Returns:
-    - true -> bed found, terminated early
-    - false -> bed not found
+    - true -> GREEN detected (target found)
+    - false -> RED detected OR no target found after all sweeps
     """
     # Keep argument for compatibility with existing callers; this routine runs fixed 10 turns.
     _ = max_swivels
@@ -107,7 +107,8 @@ def swivel(max_swivels):
     left_motor = Motor("A")
     right_motor = Motor("B")
 
-    target_colours = {"RED", "GREEN"}
+    # Stop swivelling if either colour is detected, but keep different return values.
+    target_colours = {"GREEN", "RED"}
 
     # Wait briefly until gyro has a valid baseline angle.
     center_angle = GYRO_SENSOR.get_angle()
@@ -129,9 +130,14 @@ def swivel(max_swivels):
         left_motor.set_dps(0)
         right_motor.set_dps(0)
 
-    def scan_for_target():
-        # Early terminate if colour sensor sees a target colour.
-        return COLOUR_SENSOR.get_colour() in target_colours
+    def target_state():
+        # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
+        colour = COLOUR_SENSOR.get_colour()
+        if colour == "GREEN":
+            return True
+        if colour == "RED":
+            return False
+        return None
 
     def angle_error(target, current):
         # Compute shortest signed error in degrees in range [-180, 180].
@@ -141,9 +147,10 @@ def swivel(max_swivels):
         # Turn in place using gyro feedback until robot is near desired heading.
         turn_start = time.time()
         while time.time() - turn_start < timeout:
-            if scan_for_target():
+            state = target_state()
+            if state is not None:
                 stop_drive()
-                return True
+                return state
 
             current_angle = GYRO_SENSOR.get_angle()
             if current_angle is None:
@@ -167,7 +174,7 @@ def swivel(max_swivels):
             time.sleep(0.02)
 
         stop_drive()
-        return scan_for_target()
+        return target_state()
 
     def move_forward_briefly():
         # Move forward a little after each turn (0.5s as requested).
@@ -176,24 +183,29 @@ def swivel(max_swivels):
         time.sleep(0.5)
         stop_drive()
 
-    # Define left/right look angles approximately 20 degrees around center heading.
+    # Define left/right look angles 20 degrees around the initial straight heading.
+    # Going from left_target to right_target is a 40 degree sweep across the center line.
     left_target = center_angle + 20
     right_target = center_angle - 20
 
     # Run exactly 10 turns total: 5 left turns and 5 right turns.
     for _ in range(5):
-        if turn_to(left_target):
-            return True
+        state = turn_to(left_target)
+        if state is not None:
+            return state
         move_forward_briefly()
-        if scan_for_target():
-            return True
+        state = target_state()
+        if state is not None:
+            return state
 
-        if turn_to(right_target):
-            return True
+        state = turn_to(right_target)
+        if state is not None:
+            return state
         move_forward_briefly()
-        if scan_for_target():
-            return True
-
+        state = target_state()
+        if state is not None:
+            return state
+        
     # Completed all turns without finding target colours.
     return False
 
