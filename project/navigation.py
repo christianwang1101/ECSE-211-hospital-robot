@@ -1,9 +1,9 @@
 from components.motor_drum import DrumMotor
+from utils.brick import reset_brick
 from read_colour_sensor import ColourSensor
 from read_gyro_sensor import GyroSensor
 from read_us_sensor import UltrasonicSensor
 
-import threading
 import time
 
 # Initialize hardware
@@ -23,7 +23,6 @@ def start_navigation():
         #TODO: add scooper function to pick up blocks initiailly
         navigate_hallway(distance_wall=10, num_black_lines=3, straight_angle=-90)
         
-        
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
@@ -31,7 +30,7 @@ def start_navigation():
         exit()
 
 
-def navigate_hallway(distance_wall, num_black_lines, straight_angle):
+def navigate_hallway(distance_wall, distance_error_margin, num_black_lines, straight_angle):
     """
    Navigates the robot through the hallways of the obstacle course
     Parameters:
@@ -53,10 +52,15 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
           continue  # wait for first readings to come in
 
       # act on values
-      if distance < 15:
-          # TODO: stop_motors()
-      elif colour == "RED":
-          # TODO: turn_to_target()
+      if colour == "ORANGE":
+          navigate_single_room()
+      
+      elif distance < (distance_wall - distance_error_margin):
+          move_right()
+          
+      elif distance > (distance_wall + distance_error_margin):
+          move_left()
+          
       else:
           # TODO: move_forward()
 
@@ -96,6 +100,16 @@ def swivel(max_swivels):
 def drop_off_block():
     # some code to drop off the block at this position, will prob
     # be called by 
+    print("MOTOR: drop off block")
+    
+def move_right():
+    print("MOTOR: move right")
+
+def move_left():
+    print("MOTOR: move left")
+
+def move_forward():
+    print("MOTOR: move left")
     
 if __name__ == "__main__":
     start_navigation()
