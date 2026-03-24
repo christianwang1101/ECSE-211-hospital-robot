@@ -2,14 +2,17 @@ from components.motor_drum import DrumMotor
 from read_colour_sensor import ColourSensor
 from read_gyro_sensor import GyroSensor
 from read_us_sensor import UltrasonicSensor
+from utils.brick import Motor, reset_brick
+from config.settings import PORT_MOTOR
 
 import threading
 import time
 
 # Initialize hardware
-COLOUR_SENSOR = ColourSensor
-GYRO_SENSOR = GyroSensor
-US_SENSOR = UltrasonicSensor
+COLOUR_SENSOR = ColourSensor()
+GYRO_SENSOR = GyroSensor()
+US_SENSOR = UltrasonicSensor()
+SWIVEL_MOTOR = Motor(PORT_MOTOR)
 
 print("Finished initialization.")
 
@@ -55,11 +58,13 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
       # act on values
       if distance < 15:
           # TODO: stop_motors()
-          # test comment
+          
       elif colour == "RED":
           # TODO: turn_to_target()
+          
       else:
           # TODO: move_forward()
+    
 
 def navigate_single_room(min_distance_wall, straight_angle):
     """
@@ -70,6 +75,7 @@ def navigate_single_room(min_distance_wall, straight_angle):
     for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
+
     
 def navigate_double_room(min_distance_wall, straight_angle):
     """
@@ -81,6 +87,7 @@ def navigate_double_room(min_distance_wall, straight_angle):
     for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
+
     
 def swivel(max_swivels):
     """
@@ -93,6 +100,102 @@ def swivel(max_swivels):
     - true -> bed found, terminated early
     - false -> bed not found
     """
+    # Keep argument for compatibility with existing callers; this routine runs fixed 10 turns.
+    _ = max_swivels
+
+    # Motor ports
+    left_motor = Motor("A")
+    right_motor = Motor("B")
+
+    target_colours = {"RED", "GREEN"}
+
+    # Wait briefly until gyro has a valid baseline angle.
+    center_angle = GYRO_SENSOR.get_angle()
+    if center_angle is None:
+        for _ in range(20):
+            time.sleep(0.05)
+            center_angle = GYRO_SENSOR.get_angle()
+            if center_angle is not None:
+                break
+    if center_angle is None:
+        return False
+
+    # Set safe speed caps for smoother turning and forward nudges.
+    left_motor.set_limits(dps=180)
+    right_motor.set_limits(dps=180)
+
+    def stop_drive():
+        # Hard stop both motors so each step starts from a known state.
+        left_motor.set_dps(0)
+        right_motor.set_dps(0)
+
+    def scan_for_target():
+        # Early terminate if colour sensor sees a target colour.
+        return COLOUR_SENSOR.get_colour() in target_colours
+
+    def angle_error(target, current):
+        # Compute shortest signed error in degrees in range [-180, 180].
+        return ((target - current + 540) % 360) - 180
+
+    def turn_to(target_angle, timeout=1.5):
+        # Turn in place using gyro feedback until robot is near desired heading.
+        turn_start = time.time()
+        while time.time() - turn_start < timeout:
+            if scan_for_target():
+                stop_drive()
+                return True
+
+            current_angle = GYRO_SENSOR.get_angle()
+            if current_angle is None:
+                time.sleep(0.02)
+                continue
+
+            error = angle_error(target_angle, current_angle)
+
+            # Stop turning once heading error is small enough.
+            if abs(error) <= 2:
+                break
+
+            # Positive error: need more left turn. Negative error: need more right turn.
+            if error > 0:
+                left_motor.set_dps(-110)
+                right_motor.set_dps(110)
+            else:
+                left_motor.set_dps(110)
+                right_motor.set_dps(-110)
+
+            time.sleep(0.02)
+
+        stop_drive()
+        return scan_for_target()
+
+    def move_forward_briefly():
+        # Move forward a little after each turn (0.5s as requested).
+        left_motor.set_dps(140)
+        right_motor.set_dps(140)
+        time.sleep(0.5)
+        stop_drive()
+
+    # Define left/right look angles approximately 20 degrees around center heading.
+    left_target = center_angle + 20
+    right_target = center_angle - 20
+
+    # Run exactly 10 turns total: 5 left turns and 5 right turns.
+    for _ in range(5):
+        if turn_to(left_target):
+            return True
+        move_forward_briefly()
+        if scan_for_target():
+            return True
+
+        if turn_to(right_target):
+            return True
+        move_forward_briefly()
+        if scan_for_target():
+            return True
+
+    # Completed all turns without finding target colours.
+    return False
 
 def drop_off_block():
     # some code to drop off the block at this position, will prob
