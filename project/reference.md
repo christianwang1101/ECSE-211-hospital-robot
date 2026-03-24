@@ -1,3 +1,4 @@
+```
 from components.motor_drum import DrumMotor
 from components.speaker import Speaker
 from components.touch_sensors import TouchSensors
@@ -62,3 +63,4 @@ def run_digital_flute():
 
 if __name__ == "__main__":
     start_program()
+```
