@@ -3,7 +3,11 @@ from read_colour_sensor import ColourSensor
 from read_gyro_sensor import GyroSensor
 from read_us_sensor import UltrasonicSensor
 from utils.brick import Motor
-from config.settings import PORT_LEFT_MOTOR, PORT_RIGHT_MOTOR
+from config.settings import (
+    PORT_LEFT_MOTOR, PORT_RIGHT_MOTOR,
+    HALLWAY_BASE_SPEED, HALLWAY_GYRO_CORRECTION_SCALE, HALLWAY_WALL_CORRECTION_SCALE,
+    HALLWAY_MIN_SPEED, HALLWAY_MAX_SPEED, HALLWAY_LOOP_SLEEP,
+)
 
 import time
 
@@ -39,50 +43,60 @@ def start_navigation():
         exit()
 
 
-def navigate_hallway(
-    distance_wall, distance_error_margin, num_black_lines, straight_angle
-):
+def navigate_hallway(distance_wall, distance_error_margin, num_black_lines, straight_angle):
     """
-    Navigates the robot through the hallways of the obstacle course
-     Parameters:
-     - distance_wall (cm): distance the robot should be from the left wall to enter the room
-     correctly
-     - num_black_lines: number of black lines the robot should travel over before
-     entering the room
-     - straight_angle: the angle the robot should be (relative to the original start position)
-     for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
-     would be based of this paramter to make sure the robot is travelling straight
+    Navigates the robot through the hallways of the obstacle course using proportional
+    differential steering — no blocking turns, robot stays in motion throughout.
+
+    Parameters:
+    - distance_wall (cm): target distance from the left wall
+    - distance_error_margin: unused by proportional controller (kept for call-site compat)
+    - num_black_lines: number of black lines to count as position milestones
+    - straight_angle: target gyro heading for straight travel
     """
+    black_line_count = 0
+    on_black_line = False
+
+    # Wait for all sensors to produce valid first readings
     while True:
-        colour = COLOUR_SENSOR.get_colour()
-        angle = GYRO_SENSOR.get_angle()
+        if (COLOUR_SENSOR.get_colour() is not None
+                and GYRO_SENSOR.get_angle() is not None
+                and US_SENSOR.get_distance() is not None):
+            break
+        time.sleep(0.05)
+
+    while True:
+        colour   = COLOUR_SENSOR.get_colour()
+        angle    = GYRO_SENSOR.get_angle()
         distance = US_SENSOR.get_distance()
 
-        if colour is None or angle is None or distance is None:
-            time.sleep(0.05)
-            continue  # wait for first readings to come in
-
-        # act on values
+        # Enter room on orange line
         if colour == "ORANGE":
-            navigate_single_room()
+            _stop_motors()
+            navigate_single_room(distance_wall, straight_angle)
+            return
 
-        elif colour == "RED":
-            # TODO: turn_to_target()
-            pass
-
-        elif distance < (distance_wall - distance_error_margin):
-            turn_to(straight_angle + 5)
-
-        elif distance > (distance_wall + distance_error_margin):
-            turn_to(straight_angle - 5)
-
-        elif distance < 15:
-            # TODO: stop_motors()
-            pass
-
+        # Count black lines as position milestones (edge-detect to avoid double-counting)
+        if colour == "BLACK":
+            if not on_black_line:
+                black_line_count += 1
+                on_black_line = True
         else:
-            # TODO: move_forward()
-            pass
+            on_black_line = False
+
+        # Proportional steering: blend gyro heading error + US wall distance error
+        gyro_error = ((straight_angle - angle + 180) % 360) - 180
+
+        us_error = distance_wall - distance if distance is not None else 0.0
+
+        correction  = HALLWAY_GYRO_CORRECTION_SCALE * gyro_error + HALLWAY_WALL_CORRECTION_SCALE * us_error
+        left_speed  = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED - correction))
+        right_speed = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED + correction))
+
+        LEFT_MOTOR.set_dps(int(left_speed))
+        RIGHT_MOTOR.set_dps(int(right_speed))
+
+        time.sleep(HALLWAY_LOOP_SLEEP)
 
 
 def navigate_single_room(min_distance_wall, straight_angle):
@@ -170,10 +184,9 @@ def swivel(max_swivels):
     return False
 
 
-def drop_off_block():
-    # some code to drop off the block at this position, will prob
-    # be called by
-    print("MOTOR: drop off block")
+def _stop_motors():
+    LEFT_MOTOR.set_dps(0)
+    RIGHT_MOTOR.set_dps(0)
 
 
 def move_straight(distance_cm, speed_dps):
@@ -233,8 +246,7 @@ def turn_to(target_angle, speed_dps=110, timeout=1.5, wait_time=0):
 
         time.sleep(0.02)
 
-    LEFT_MOTOR.set_dps(0)
-    RIGHT_MOTOR.set_dps(0)
+    _stop_motors()
 
     if wait_time > 0:
         time.sleep(wait_time)
@@ -245,12 +257,12 @@ def navigate_pharmacy():
     Navigate the pharmacy area with dimensions approximately 48.9 x 20 units.
     The robot starts in this area and needs to move around.
     """
-    # Move straight for 20 cm at 200 dps
-    move_straight(distance_cm=20, speed_dps=200)
-
     # Parameters
     x_degrees = 90
     wait_time = 2  # seconds
+
+    # Move straight for 20 cm at 200 dps
+    move_straight(distance_cm=20, speed_dps=200)
 
     # Rotate right to X degrees, wait
     turn_to(x_degrees, wait_time=wait_time)
@@ -273,12 +285,14 @@ def navigate_pharmacy():
     # Final right rotation
     turn_to(90)
 
-    # TODO: Add more navigation logic for the pharmacy area\
+
+def pick_up_block():
+    # some code to pick up the block at this position
+    print("Picking up block")
 
 
 def drop_off_block():
-    # some code to drop off the block at this position, will prob
-    # be called by
+    # some code to drop off the block at this position
     print("Dropping off blocks")
 
 
