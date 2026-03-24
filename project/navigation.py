@@ -15,6 +15,12 @@ GYRO_SENSOR = GyroSensor()
 US_SENSOR = UltrasonicSensor()
 SWIVEL_MOTOR = Motor(PORT_MOTOR)
 
+RADIUS_WHEEL = 2 #in cm
+
+# Initialize navigation motors (assuming differential drive)
+LEFT_MOTOR = Motor("A")
+RIGHT_MOTOR = Motor("D")
+
 print("Finished initialization.")
 
 def start_navigation():
@@ -214,5 +220,110 @@ def drop_off_block():
     # some code to drop off the block at this position, will prob
     # be called by 
     
+def move_straight(distance_cm, speed_dps):
+    """
+    Move the robot straight for a given distance at a given speed.
+    
+    Parameters:
+    - distance_cm: distance to travel in centimeters
+    - speed_dps: speed in degrees per second for the motors
+    """
+    # Calculate time needed: time = distance / speed
+    # But we need to convert speed from dps to cm/s
+    # This is a simplification - in reality you'd need wheel diameter and gear ratio
+    # For now, assume speed_dps is roughly proportional to cm/s
+    linear_speed= RADIUS_WHEEL * (speed_dps * (3.14 / 180))  # convert dps to cm/s
+    time_seconds = distance_cm / linear_speed  # rough approximation
+    
+    # Set both motors to move forward at the same speed
+    LEFT_MOTOR.set_dps(speed_dps)
+    RIGHT_MOTOR.set_dps(speed_dps)
+    
+    # Wait for the calculated time
+    time.sleep(time_seconds)
+    
+    # Stop the motors
+    LEFT_MOTOR.set_dps(0)
+    RIGHT_MOTOR.set_dps(0)
+
+def rotate_to_angle(target_angle, speed_dps=100, wait_time=0):
+    """
+    Rotate the robot in place to reach a target angle using the gyro sensor.
+    
+    Parameters:
+    - target_angle: the desired angle in degrees (relative to starting position)
+    - speed_dps: rotation speed in degrees per second
+    - wait_time: time to wait in seconds after reaching the target angle
+    """
+    current_angle = GYRO_SENSOR.get_angle()
+    if current_angle is None:
+        print("Gyro sensor not ready")
+        return
+    
+    angle_difference = target_angle - current_angle
+    
+    # Determine direction: positive difference = turn right, negative = turn left
+    if angle_difference > 0:
+        # Turn right: left motor forward, right motor backward
+        LEFT_MOTOR.set_dps(speed_dps)
+        RIGHT_MOTOR.set_dps(-speed_dps)
+    else:
+        # Turn left: left motor backward, right motor forward
+        LEFT_MOTOR.set_dps(-speed_dps)
+        RIGHT_MOTOR.set_dps(speed_dps)
+    
+    # Wait until we reach the target angle (with some tolerance) # if angle is not between +- 2 degrees of target angle, motor will keep turning
+    tolerance = 2  # degrees
+    while abs(GYRO_SENSOR.get_angle() - target_angle) > tolerance:
+        time.sleep(0.05)
+    
+    # Stop motors
+    LEFT_MOTOR.set_dps(0)
+    RIGHT_MOTOR.set_dps(0)
+    
+    # Wait the specified time
+    if wait_time > 0:
+        time.sleep(wait_time)
+
+def pharmacy_navigation():
+    """
+    Navigate the pharmacy area with dimensions approximately 48.9 x 20 units.
+    The robot starts in this area and needs to move around.
+    """
+    # Move straight for 20 cm at 200 dps
+    move_straight(distance_cm=20, speed_dps=200)
+    
+    # Parameters
+    x_degrees = 90
+    wait_time = 2  # seconds
+    
+    # Rotate right to X degrees, wait
+    rotate_to_angle(x_degrees, wait_time=wait_time)
+    
+    # Go back to 0 degrees
+    rotate_to_angle(0)
+    
+    # Rotate left to -X degrees, wait
+    rotate_to_angle(-x_degrees, wait_time=wait_time)
+    
+    # Go back to 0 degrees
+    rotate_to_angle(0)
+    
+    # Rotate 180 degrees to face the opposite direction
+    rotate_to_angle(180)
+    
+    # Move back the way we started (same distance, opposite direction)
+    move_straight(distance_cm=20, speed_dps=200)
+    
+    # Final right rotation
+    rotate_to_angle(90)
+    
+    # TODO: Add more navigation logic for the pharmacy area\
+
+
+def drop_off_block():
+    # some code to drop off the block at this position, will prob
+    # be called by 
+
 if __name__ == "__main__":
     start_navigation()
