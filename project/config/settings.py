@@ -8,6 +8,7 @@ HALLWAY_LOOP_SLEEP = 0.02  # seconds between control loop iterations
 
 PORT_RIGHT_MOTOR = "B"
 PORT_LEFT_MOTOR = "A"
+RADIUS_WHEEL = 2  # in cm
 
 PORT_TOUCH_SENSOR_STOP = 1
 

@@ -4,9 +4,15 @@ from read_gyro_sensor import GyroSensor
 from read_us_sensor import UltrasonicSensor
 from utils.brick import Motor
 from config.settings import (
-    PORT_LEFT_MOTOR, PORT_RIGHT_MOTOR,
-    HALLWAY_BASE_SPEED, HALLWAY_GYRO_CORRECTION_SCALE, HALLWAY_WALL_CORRECTION_SCALE,
-    HALLWAY_MIN_SPEED, HALLWAY_MAX_SPEED, HALLWAY_LOOP_SLEEP,
+    PORT_LEFT_MOTOR,
+    PORT_RIGHT_MOTOR,
+    RADIUS_WHEEL,
+    HALLWAY_BASE_SPEED,
+    HALLWAY_GYRO_CORRECTION_SCALE,
+    HALLWAY_WALL_CORRECTION_SCALE,
+    HALLWAY_MIN_SPEED,
+    HALLWAY_MAX_SPEED,
+    HALLWAY_LOOP_SLEEP,
 )
 
 import time
@@ -19,7 +25,6 @@ US_SENSOR = UltrasonicSensor()
 # Initialize navigation motors
 LEFT_MOTOR = Motor(PORT_LEFT_MOTOR)
 RIGHT_MOTOR = Motor(PORT_RIGHT_MOTOR)
-RADIUS_WHEEL = 2  # in cm
 
 print("Finished initialization.")
 
@@ -43,7 +48,9 @@ def start_navigation():
         exit()
 
 
-def navigate_hallway(distance_wall, distance_error_margin, num_black_lines, straight_angle):
+def navigate_hallway(
+    distance_wall, distance_error_margin, num_black_lines, straight_angle
+):
     """
     Navigates the robot through the hallways of the obstacle course using proportional
     differential steering — no blocking turns, robot stays in motion throughout.
@@ -59,15 +66,17 @@ def navigate_hallway(distance_wall, distance_error_margin, num_black_lines, stra
 
     # Wait for all sensors to produce valid first readings
     while True:
-        if (COLOUR_SENSOR.get_colour() is not None
-                and GYRO_SENSOR.get_angle() is not None
-                and US_SENSOR.get_distance() is not None):
+        if (
+            COLOUR_SENSOR.get_colour() is not None
+            and GYRO_SENSOR.get_angle() is not None
+            and US_SENSOR.get_distance() is not None
+        ):
             break
         time.sleep(0.05)
 
     while True:
-        colour   = COLOUR_SENSOR.get_colour()
-        angle    = GYRO_SENSOR.get_angle()
+        colour = COLOUR_SENSOR.get_colour()
+        angle = GYRO_SENSOR.get_angle()
         distance = US_SENSOR.get_distance()
 
         # Enter room on orange line
@@ -89,9 +98,16 @@ def navigate_hallway(distance_wall, distance_error_margin, num_black_lines, stra
 
         us_error = distance_wall - distance if distance is not None else 0.0
 
-        correction  = HALLWAY_GYRO_CORRECTION_SCALE * gyro_error + HALLWAY_WALL_CORRECTION_SCALE * us_error
-        left_speed  = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED - correction))
-        right_speed = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED + correction))
+        correction = (
+            HALLWAY_GYRO_CORRECTION_SCALE * gyro_error
+            + HALLWAY_WALL_CORRECTION_SCALE * us_error
+        )
+        left_speed = max(
+            HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED - correction)
+        )
+        right_speed = max(
+            HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED + correction)
+        )
 
         LEFT_MOTOR.set_dps(int(left_speed))
         RIGHT_MOTOR.set_dps(int(right_speed))
