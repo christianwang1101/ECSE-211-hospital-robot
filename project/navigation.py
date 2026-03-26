@@ -2,17 +2,21 @@ from utils.brick import reset_brick
 from components.colour_sensor import ColourSensor
 from components.gyro_sensor import GyroSensor
 from components.ultrasonic_sensor import UltrasonicSensor
-from utils.brick import Motor
 from config.settings import (
-    PORT_LEFT_MOTOR,
-    PORT_RIGHT_MOTOR,
-    RADIUS_WHEEL,
     HALLWAY_BASE_SPEED,
     HALLWAY_GYRO_CORRECTION_SCALE,
     HALLWAY_WALL_CORRECTION_SCALE,
     HALLWAY_MIN_SPEED,
     HALLWAY_MAX_SPEED,
     HALLWAY_LOOP_SLEEP,
+)
+from block_collection import collect_block
+from move import (
+    move_straight,
+    turn_without_gyro,
+    set_motor_left_dps,
+    set_motor_right_dps,
+    stop_motors,
 )
 
 import time
@@ -21,10 +25,6 @@ import time
 COLOUR_SENSOR = ColourSensor()
 GYRO_SENSOR = GyroSensor()
 US_SENSOR = UltrasonicSensor()
-
-# Initialize navigation motors
-LEFT_MOTOR = Motor(PORT_LEFT_MOTOR)
-RIGHT_MOTOR = Motor(PORT_RIGHT_MOTOR)
 
 print("Finished initialization.")
 
@@ -36,9 +36,8 @@ def start_navigation():
     US_SENSOR.start()
 
     try:
-        # TODO: add scooper function to pick up blocks initiailly
         navigate_pharmacy()
-        navigate_hallway(distance_wall=10, num_black_lines=3, straight_angle=-90)
+        # navigate_hallway(distance_wall=10, num_black_lines=3, straight_angle=-90)  # TODO: tune distance_wall
 
     except KeyboardInterrupt:
         print("\nShutting down...")
@@ -48,16 +47,24 @@ def start_navigation():
         exit()
 
 
-def navigate_hallway(
-    distance_wall, distance_error_margin, num_black_lines, straight_angle
-):
+def navigate_pharmacy():
+    """
+    Navigate the pharmacy area with dimensions approximately 48.9 x 20 units.
+    The robot starts in this area and needs to move around.
+    """
+    collect_block()
+    move_straight(distance_cm=5, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm=5)
+    collect_block()
+
+
+def navigate_hallway(distance_wall, num_black_lines, straight_angle):
     """
     Navigates the robot through the hallways of the obstacle course using proportional
     differential steering — no blocking turns, robot stays in motion throughout.
 
     Parameters:
     - distance_wall (cm): target distance from the left wall
-    - distance_error_margin: unused by proportional controller (kept for call-site compat)
     - num_black_lines: number of black lines to count as position milestones
     - straight_angle: target gyro heading for straight travel
     """
@@ -81,7 +88,7 @@ def navigate_hallway(
 
         # Enter room on orange line
         if colour == "ORANGE":
-            _stop_motors()
+            stop_motors()
             navigate_single_room(distance_wall, straight_angle)
             return
 
@@ -109,8 +116,8 @@ def navigate_hallway(
             HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED + correction)
         )
 
-        LEFT_MOTOR.set_dps(int(left_speed))
-        RIGHT_MOTOR.set_dps(int(right_speed))
+        set_motor_left_dps(int(left_speed))
+        set_motor_right_dps(int(right_speed))
 
         time.sleep(HALLWAY_LOOP_SLEEP)
 
@@ -138,178 +145,6 @@ def navigate_double_room(min_distance_wall, straight_angle):
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
     pass
-
-
-def swivel(max_swivels):
-    """
-    Swivels the robot back and forth a max set number of times
-    Terminates early when colour sensor detects red or green
-    Parameters:
-    - max_swivels: max number of times the robot will rotate back & forth before
-    termination
-    Returns:
-    - true -> GREEN detected (target found)
-    - false -> RED detected OR no target found after all sweeps
-    """
-
-    def target_state():
-        # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
-        colour = COLOUR_SENSOR.get_colour()
-        if colour == "GREEN":
-            return True
-        if colour == "RED":
-            return False
-        return None
-
-    # Wait briefly until gyro has a valid baseline angle.
-    center_angle = GYRO_SENSOR.get_angle()
-    if center_angle is None:
-        for _ in range(20):
-            time.sleep(0.05)
-            center_angle = GYRO_SENSOR.get_angle()
-            if center_angle is not None:
-                break
-    if center_angle is None:
-        return False
-
-    LEFT_MOTOR.set_limits(dps=180)
-    RIGHT_MOTOR.set_limits(dps=180)
-
-    left_target = center_angle + 20
-    right_target = center_angle - 20
-
-    for _ in range(max_swivels):
-        turn_to(left_target)
-        state = target_state()
-        if state is not None:
-            return state
-        move_straight(distance_cm=2.5, speed_dps=140)
-        state = target_state()
-        if state is not None:
-            return state
-
-        turn_to(right_target)
-        state = target_state()
-        if state is not None:
-            return state
-        move_straight(distance_cm=2.5, speed_dps=140)
-        state = target_state()
-        if state is not None:
-            return state
-
-    return False
-
-
-def _stop_motors():
-    LEFT_MOTOR.set_dps(0)
-    RIGHT_MOTOR.set_dps(0)
-
-
-def move_straight(distance_cm, speed_dps):
-    """
-    Move the robot straight for a given distance at a given speed.
-
-    Parameters:
-    - distance_cm: distance to travel in centimeters
-    - speed_dps: speed in degrees per second for the motors
-    """
-    # Calculate time needed: time = distance / speed
-    # But we need to convert speed from dps to cm/s
-    # This is a simplification - in reality you'd need wheel diameter and gear ratio
-    # For now, assume speed_dps is roughly proportional to cm/s
-    linear_speed = RADIUS_WHEEL * (speed_dps * (3.14 / 180))  # convert dps to cm/s
-    time_seconds = distance_cm / linear_speed  # rough approximation
-
-    # Set both motors to move forward at the same speed
-    LEFT_MOTOR.set_dps(speed_dps)
-    RIGHT_MOTOR.set_dps(speed_dps)
-
-    # Wait for the calculated time
-    time.sleep(time_seconds)
-
-    # Stop the motors
-    LEFT_MOTOR.set_dps(0)
-    RIGHT_MOTOR.set_dps(0)
-
-
-def turn_to(target_angle, speed_dps=110, timeout=1.5, wait_time=0):
-    """
-    Turn the robot in place to a target heading using gyro feedback.
-
-    Parameters:
-    - target_angle: desired heading in degrees (relative to starting position)
-    - speed_dps: rotation speed in degrees per second
-    - timeout: max seconds to spend turning before giving up
-    - wait_time: time to wait in seconds after reaching the target angle
-    """
-    turn_start = time.time()
-    while time.time() - turn_start < timeout:
-        current_angle = GYRO_SENSOR.get_angle()
-        if current_angle is None:
-            time.sleep(0.02)
-            continue
-
-        error = ((target_angle - current_angle + 540) % 360) - 180
-        if abs(error) <= 2:
-            break
-
-        if error > 0:
-            LEFT_MOTOR.set_dps(-speed_dps)
-            RIGHT_MOTOR.set_dps(speed_dps)
-        else:
-            LEFT_MOTOR.set_dps(speed_dps)
-            RIGHT_MOTOR.set_dps(-speed_dps)
-
-        time.sleep(0.02)
-
-    _stop_motors()
-
-    if wait_time > 0:
-        time.sleep(wait_time)
-
-
-def navigate_pharmacy():
-    """
-    Navigate the pharmacy area with dimensions approximately 48.9 x 20 units.
-    The robot starts in this area and needs to move around.
-    """
-    # Parameters
-    x_degrees = 90
-    wait_time = 2  # seconds
-
-    # Move straight for 20 cm at 200 dps
-    move_straight(distance_cm=20, speed_dps=200)
-
-    # Rotate right to X degrees, wait
-    turn_to(x_degrees, wait_time=wait_time)
-
-    # Go back to 0 degrees
-    turn_to(0)
-
-    # Rotate left to -X degrees, wait
-    turn_to(-x_degrees, wait_time=wait_time)
-
-    # Go back to 0 degrees
-    turn_to(0)
-
-    # Rotate 180 degrees to face the opposite direction
-    turn_to(180)
-
-    # Move back the way we started (same distance, opposite direction)
-    move_straight(distance_cm=20, speed_dps=200)
-
-    # Final right rotation
-    turn_to(90)
-
-
-def pick_up_block():
-    # some code to pick up the block at this position
-    print("Picking up block")
-
-
-def drop_off_block():
-    # some code to drop off the block at this position
-    print("Dropping off blocks")
 
 
 if __name__ == "__main__":

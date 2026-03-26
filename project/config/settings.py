@@ -1,3 +1,34 @@
+# -----------------------------------------------------
+# SENSOR PORTS
+PORT_TOUCH_SENSOR_STOP = 2
+PORT_COLOR_SENSOR = 3
+PORT_GYRO = 4
+PORT_ULTRASONIC = 1
+
+# MOTOR PORTS - PORT B IS FAULTY.
+PORT_MOTOR_SCOOPER = "D"
+PORT_MOTOR_DISPENSER = "B"
+PORT_MOTOR_RIGHT = "C"
+PORT_MOTOR_LEFT = "A"
+RADIUS_WHEEL = 2  # in cm
+
+# -----------------------------------------------------
+# Block collection motor config
+MOTOR_SETTLE_SECONDS = 0.5
+DISPENSER_MOTOR_TURN_DEGREES = 110
+DISPENSER_MOTOR_DPS = 250
+
+SCOOPER_MOTOR_TURN_DEGREES = 260
+DISPENSER_MOTOR_DPS_IN = 250
+DISPENSER_MOTOR_DPS_OUT = 100
+
+# -----------------------------------------------------
+# Navigation config
+SPEED_DPS_STRAIGHT = 200
+
+SPEED_DPS_TURN = 100
+DISTANCE_CM_TURN = 10.5  # for 90 deg turn
+
 # Hallway navigation tuning constants
 HALLWAY_BASE_SPEED = 200  # dps, nominal forward speed
 HALLWAY_GYRO_CORRECTION_SCALE = 4.0  # dps correction per degree of gyro error
@@ -6,16 +37,8 @@ HALLWAY_MIN_SPEED = 80  # dps floor (keep robot moving)
 HALLWAY_MAX_SPEED = 300  # dps ceiling (prevent wheel slip)
 HALLWAY_LOOP_SLEEP = 0.02  # seconds between control loop iterations
 
-PORT_RIGHT_MOTOR = "B"
-PORT_LEFT_MOTOR = "A"
-RADIUS_WHEEL = 2  # in cm
-
-PORT_TOUCH_SENSOR_STOP = 1
-
-PORT_GYRO = 2
-PORT_ULTRASONIC = 3
-PORT_COLOR_SENSOR = 4
-
+# -----------------------------------------------------
+# Colour sensor config
 COLOUR_READINGS_MAP = {
     (0.8270283597, 0.09330910053, 0.07966253976): "RED",
     (0.4119988175, 0.4934499177, 0.09455126476): "GREEN",
