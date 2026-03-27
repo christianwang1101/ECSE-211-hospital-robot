@@ -62,8 +62,8 @@ def spin_dispeser_motor_once():
 
 def collect_block():
     """Turn broom motor out/back, then rotate a second motor by 90 degrees."""
-    spin_dispeser_motor_once()
     spin_scooper_motor()
+    spin_dispeser_motor_once()
     print("Collected block.")
 
 
