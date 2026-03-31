@@ -11,13 +11,15 @@ from config.settings import (
     HALLWAY_INTEGRAL_CLAMP,
 )
 from access_components import get_gyro_sensor, get_colour_sensor, get_ultrasonic_sensor
-from block_collection import collect_block
+from block_collection import collect_block, spin_dispeser_motor_once
 from move import (
     move_straight,
     turn_without_gyro,
+    turn_to_with_gyro,
     set_motor_left_dps,
     set_motor_right_dps,
     stop_motors,
+    sweep,
 )
 
 import time
@@ -37,26 +39,32 @@ def start_navigation():
 
         # first hallway segment to Room 1
         navigate_hallway(distance_wall=4, straight_angle=0, us_weight=15, timeout=9)
+        move_straight(distance_cm=2.7, is_forward=False)  # back out
+        navigate_single_room()
+
+        # get into place for second hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
-        print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
-        time.sleep(1)
         print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
 
         # second hallway segment to Room 2
         navigate_hallway(distance_wall=55, straight_angle=0, us_weight=10, timeout=11)
+        turn_without_gyro(is_left=True, distance_cm=10.5)  # turn into room
+        move_straight(distance_cm=2.7, is_forward=False)  # back out
+        navigate_single_room()
 
-        GYRO_SENSOR.reset_angle()
-        time.sleep(1)
-
-        turn_without_gyro(is_left=True, distance_cm=10.5)
+        # get into place for third hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
+        time.sleep(1)
+        GYRO_SENSOR.reset_angle()
+        print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
 
         # third hallway segment to Room 3
         navigate_hallway(distance_wall=53, straight_angle=0, us_weight=8, timeout=6)
-
-        turn_without_gyro(is_left=False, distance_cm=10.5)
+        turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
+        move_straight(distance_cm=2.7, is_forward=False)  # back out
+        navigate_double_room()  # TODO
 
     except KeyboardInterrupt:
         print("\nShutting down...")
@@ -78,6 +86,51 @@ def navigate_pharmacy():
     collect_block()
     move_straight(distance_cm=10, is_forward=False)
     turn_without_gyro(is_left=True, distance_cm=10.5)
+
+
+def navigate_single_room(min_distance_wall, straight_angle):
+    """
+    Navigates the robot through a single-bed room, scanning
+    the bed and detecting its position, then dropping off the block if necessary
+    - min_distance_wall: distance the robot should be from the left wall to prevent collision
+    - straight_angle: the angle the robot should be (relative to the original start position)
+    for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
+    would be based of this paramter to make sure the robot is swivelling relative to the straight angle
+    """
+    print("navigating single room")
+
+    start_angle = GYRO_SENSOR.get_angle()
+    move_forward_cm = 3
+    sweep_distance_cm = 2.4
+
+    green_bed_found, num_forward_increments = sweep(
+        max_sweeps=5,
+        move_forward_cm=move_forward_cm,
+        sweep_distance_cm=sweep_distance_cm,
+    )
+    if green_bed_found:
+        spin_dispeser_motor_once()  # drop off block
+
+    turn_to_with_gyro(start_angle)  # reorient back to center
+    move_straight(
+        num_forward_increments * move_forward_cm, is_forward=False
+    )  # go backwards to starting position
+
+    print("finished navigating single room")
+
+
+def navigate_double_room(min_distance_wall, straight_angle):
+    """
+    Navigates the robot through a double-bed room, scanning
+    the bed and detecting its position, then dropping off the block if necessary
+    Parameters:
+    - min_distance_wall: distance the robot should be from the left wall to prevent collision
+    - straight_angle: the angle the robot should be (relative to the original start position)
+    for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
+    would be based of this paramter to make sure the robot is swivelling relative to the straight angle
+    """
+    print("TODO: navigate double room")
+    pass
 
 
 def navigate_hallway(distance_wall, straight_angle, us_weight, timeout=None):
@@ -130,7 +183,6 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, timeout=None):
             if colour == "ORANGE":
                 stop_motors()
                 print("detected orange - stop")
-                navigate_single_room(distance_wall, straight_angle)
                 return
 
             # Weighted combined error (degrees and cm normalised by their weights)
@@ -186,31 +238,6 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, timeout=None):
             time.sleep(HALLWAY_LOOP_SLEEP)
         except Exception as e:
             print("navigate_hallway error: " + str(e))
-
-
-def navigate_single_room(min_distance_wall, straight_angle):
-    """
-    Navigates the robot through a single-bed room, scanning
-    the bed and detecting its position, then dropping off the block if necessary
-    - min_distance_wall: distance the robot should be from the left wall to prevent collision
-    - straight_angle: the angle the robot should be (relative to the original start position)
-    for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
-    would be based of this paramter to make sure the robot is swivelling relative to the straight angle
-    """
-    print("navigating single room")
-
-
-def navigate_double_room(min_distance_wall, straight_angle):
-    """
-    Navigates the robot through a double-bed room, scanning
-    the bed and detecting its position, then dropping off the block if necessary
-    Parameters:
-    - min_distance_wall: distance the robot should be from the left wall to prevent collision
-    - straight_angle: the angle the robot should be (relative to the original start position)
-    for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
-    would be based of this paramter to make sure the robot is swivelling relative to the straight angle
-    """
-    pass
 
 
 if __name__ == "__main__":

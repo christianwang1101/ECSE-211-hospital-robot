@@ -47,8 +47,17 @@ def move_straight(distance_cm, is_forward=True, speed_dps=SPEED_DPS_STRAIGHT):
     stop_motors()
 
 
-def turn_without_gyro(is_left, speed_dps=SPEED_DPS_TURN, distance_cm=DISTANCE_CM_TURN):
+def turn_without_gyro(
+    is_left, speed_dps=SPEED_DPS_TURN, distance_cm=DISTANCE_CM_TURN, stop_condition=None
+):
+    """
+    Parameters:
+    - stop_condition: optional callable; if it returns a non-None value mid-turn, motors
+      stop and the function returns that value (early exit). Returns None on normal completion.
+    """
     linear_speed = RADIUS_WHEEL * math.radians(speed_dps)  # cm/s
+    duration = distance_cm / linear_speed
+    poll_interval = 0.02
 
     if is_left:
         LEFT_MOTOR.set_dps(-speed_dps)
@@ -56,8 +65,19 @@ def turn_without_gyro(is_left, speed_dps=SPEED_DPS_TURN, distance_cm=DISTANCE_CM
     else:
         LEFT_MOTOR.set_dps(speed_dps)
         RIGHT_MOTOR.set_dps(-speed_dps)
-    time.sleep(distance_cm / linear_speed)
+
+    elapsed = 0.0
+    while elapsed < duration:
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+        if stop_condition is not None:
+            result = stop_condition()
+            if result is not None:
+                stop_motors()
+                return result
+
     stop_motors()
+    return None
 
 
 def turn_to_with_gyro(target_angle, speed_dps=SPEED_DPS_TURN, timeout=1.5, wait_time=0):
@@ -103,7 +123,7 @@ def turn_to_with_gyro(target_angle, speed_dps=SPEED_DPS_TURN, timeout=1.5, wait_
         time.sleep(wait_time)
 
 
-def swivel(max_swivels):
+def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
     """
     Swivels the robot back and forth a max set number of times
     Terminates early when colour sensor detects red or green
@@ -115,7 +135,7 @@ def swivel(max_swivels):
     - false -> RED detected OR no target found after all sweeps
     """
 
-    def target_state():
+    def stop_on_colour():
         # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
         colour = COLOUR_SENSOR.get_colour()
         if colour == "GREEN":
@@ -124,41 +144,35 @@ def swivel(max_swivels):
             return False
         return None
 
-    # Wait briefly until gyro has a valid baseline angle.
-    center_angle = GYRO_SENSOR.get_angle()
-    if center_angle is None:
-        for _ in range(20):
-            time.sleep(0.05)
-            center_angle = GYRO_SENSOR.get_angle()
-            if center_angle is not None:
-                break
-    if center_angle is None:
-        return False
+    LEFT_MOTOR.set_limits(dps=100)
+    RIGHT_MOTOR.set_limits(dps=100)
 
-    LEFT_MOTOR.set_limits(dps=180)
-    RIGHT_MOTOR.set_limits(dps=180)
+    for num_forward_increments in range(max_sweeps):
+        state = turn_without_gyro(
+            is_left=True, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+        )  # go left
+        if state is not None:
+            return state, num_forward_increments
 
-    left_target = center_angle + 20
-    right_target = center_angle - 20
+        state = turn_without_gyro(
+            is_left=False, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+        )  # go back to center
+        if state is not None:
+            return state, num_forward_increments
 
-    for _ in range(max_swivels):
-        turn_to_with_gyro(left_target)
-        state = target_state()
+        state = turn_without_gyro(
+            is_left=False, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+        )  # go right
         if state is not None:
-            return state
-        move_straight(distance_cm=2.5, speed_dps=140)
-        state = target_state()
-        if state is not None:
-            return state
+            return state, num_forward_increments
 
-        turn_to_with_gyro(right_target)
-        state = target_state()
+        state = turn_without_gyro(
+            is_left=True, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+        )  # go back to center
         if state is not None:
-            return state
-        move_straight(distance_cm=2.5, speed_dps=140)
-        state = target_state()
-        if state is not None:
-            return state
+            return state, num_forward_increments
+
+        move_straight(distance_cm=move_forward_cm, is_forward=True)
 
     return False
 
