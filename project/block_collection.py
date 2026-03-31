@@ -47,13 +47,29 @@ def spin_dispeser_motor_once():
     dispenser_motor.reset_encoder()
 
     try:
-        dispenser_motor.set_limits(dps=DISPENSER_MOTOR_DPS)
+        dispenser_motor.set_limits(dps= DISPENSER_MOTOR_DPS )
         seconds = abs(DISPENSER_MOTOR_TURN_DEGREES) / float(DISPENSER_MOTOR_DPS)
         print(
             f"Turning second motor on port {PORT_MOTOR_DISPENSER} by {DISPENSER_MOTOR_TURN_DEGREES} degrees at {DISPENSER_MOTOR_DPS} dps..."
         )
-        dispenser_motor.set_position_relative(DISPENSER_MOTOR_TURN_DEGREES)
+        dispenser_motor.set_position_relative(70)
         time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        
+        dispenser_motor.set_limits(dps= 150)
+        
+        dispenser_motor.set_position_relative(-45)
+        time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        
+        
+        dispenser_motor.set_limits(dps= 150)
+        
+        dispenser_motor.set_position_relative(69)
+        time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        
+        
+        
+        
+        
 
         print("Stored block.")
     finally:
@@ -64,8 +80,10 @@ def collect_block():
     """Turn broom motor out/back, then rotate a second motor by 90 degrees."""
     spin_scooper_motor()
     spin_dispeser_motor_once()
+    
     print("Collected block.")
 
 
 if __name__ == "__main__":
     collect_block()
+

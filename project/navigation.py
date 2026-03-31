@@ -5,7 +5,6 @@ from config.settings import (
     HALLWAY_MAX_SPEED,
     HALLWAY_LOOP_SLEEP,
     HALLWAY_GYRO_WEIGHT,
-    HALLWAY_US_WEIGHT,
     HALLWAY_KP,
     HALLWAY_KI,
     HALLWAY_KD,
@@ -32,9 +31,37 @@ US_SENSOR = get_ultrasonic_sensor()
 
 def start_navigation():
     try:
+        navigate_pharmacy()
+        time.sleep(1)
+        GYRO_SENSOR.reset_angle()
+        
         navigate_hallway(
-            distance_wall=10, num_black_lines=3, straight_angle=0
-        )  # TODO: tune distance_wall
+            distance_wall=4, num_black_lines=3, straight_angle=0, us_weight=15, timeout=9
+        )
+        turn_without_gyro(is_left=False, distance_cm=10.5)
+        time.sleep(1)
+        GYRO_SENSOR.reset_angle()
+        print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
+        time.sleep(1)
+        print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
+        
+        navigate_hallway(
+            distance_wall=55, num_black_lines=3, straight_angle=0, us_weight=10, timeout=11
+        )
+        GYRO_SENSOR.reset_angle()
+        time.sleep(1)
+        
+        turn_without_gyro(is_left=True, distance_cm=10.5)
+        
+        turn_without_gyro(is_left=False, distance_cm=10.5)
+        
+        navigate_hallway(
+            distance_wall=53, num_black_lines=3, straight_angle=0, us_weight=8, timeout=6
+        )
+        
+        turn_without_gyro(is_left=False, distance_cm=10.5)
+        
+        # TODO: tune distance_wall
 
     except KeyboardInterrupt:
         print("\nShutting down...")
@@ -50,16 +77,15 @@ def navigate_pharmacy():
     The robot starts in this area and needs to move around.
     """
     collect_block()
-    move_straight(distance_cm=2, is_forward=False)
-    turn_to_with_gyro(21)
+    move_straight(distance_cm=2.7, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm = 2.4)
+    move_straight(distance_cm=2.5, is_forward=True)
     collect_block()
-    move_straight(distance_cm=2.8, is_forward=True)
-    collect_block()
-    move_straight(distance_cm=2, is_forward=False)
-    turn_to_with_gyro(0)
+    move_straight(distance_cm=10, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm = 10.5)
 
 
-def navigate_hallway(distance_wall, num_black_lines, straight_angle):
+def navigate_hallway(distance_wall, num_black_lines, straight_angle, us_weight, timeout=None):
     """
     Navigates the robot through the hallways of the obstacle course using a PID
     controller that fuses gyro heading and left-wall US distance into a single
@@ -80,6 +106,8 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
 
     integral = 0.0
     prev_error = None
+    
+    start_time = time.time()
 
     # Wait for all sensors to produce valid first readings
     while True:
@@ -93,6 +121,11 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
 
     while True:
         try:
+            if timeout is not None and time.time() - start_time >= timeout:
+                stop_motors()
+                print("timer ended. stopping motors.")
+                return
+            
             colour = COLOUR_SENSOR.get_colour()
             angle = GYRO_SENSOR.get_angle()
             distance = US_SENSOR.get_distance()
@@ -107,32 +140,38 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
                 print("detected orange - stop")
                 navigate_single_room(distance_wall, straight_angle)
                 return
-
-            # Count black lines as position milestones (edge-detect to avoid double-counting)
-            if colour == "BLACK":
-                if not on_black_line:
-                    black_line_count += 1
-                    on_black_line = True
-                    print("scanned black line")
-            else:
-                on_black_line = False
-
+                
+                
             # Weighted combined error (degrees and cm normalised by their weights)
             gyro_error = ((angle - straight_angle + 180) % 360) - 180
             us_error = distance - distance_wall
-            combined_error = HALLWAY_GYRO_WEIGHT * gyro_error + HALLWAY_US_WEIGHT * us_error
+            combined_error = HALLWAY_GYRO_WEIGHT * gyro_error + us_weight * us_error
+            print("-------------------------------------")
+            print("colour_reading: " + str(colour))
+            print("gyro_reading: " + str(angle))
+            print("us_reading: " + str(distance))
+            print("gyro_error: " + str(gyro_error))
+            print("us_error: " + str(us_error))
+            print("combined_error: " + str(combined_error))
 
             # PID terms
             integral += combined_error * HALLWAY_LOOP_SLEEP
             integral = max(-HALLWAY_INTEGRAL_CLAMP, min(HALLWAY_INTEGRAL_CLAMP, integral))
             derivative = (combined_error - prev_error) / HALLWAY_LOOP_SLEEP if prev_error is not None else 0.0
             prev_error = combined_error
+            print("integral: " + str(integral))
+            print("derivative: " + str(derivative))
+            print("prev_error: " + str(prev_error))
 
             correction = HALLWAY_KP * combined_error + HALLWAY_KI * integral + HALLWAY_KD * derivative
+            print("correction: " + str(correction))
 
             # Positive correction steers left: left slower, right faster
             left_speed = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, int(HALLWAY_BASE_SPEED - correction)))
             right_speed = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, int(HALLWAY_BASE_SPEED + correction)))
+            
+            print("left_speed: " + str(left_speed))
+            print("right_speed: " + str(right_speed))
 
             set_motor_left_dps(left_speed)
             set_motor_right_dps(right_speed)

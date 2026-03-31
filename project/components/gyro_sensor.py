@@ -35,7 +35,21 @@ class GyroSensor:
             except Exception as e:
                 print(f"Gyro poll error: {e}")
             sleep(POLL_INTERVAL)
+            
+    def reset_angle(self):
+        print("resetting error to 0")
+        
+        self._sensor.wait_ready()
+        self._sensor.reset_measure()
+        self._sensor.wait_ready()
 
+        origin_reading = self._sensor.get_both_measure()
+        if origin_reading is None:
+            raise RuntimeError("Could not read gyro origin value.")
+        self._origin, _ = origin_reading
+        self._angle = 0
+        self._lock = threading.Lock()
+    
     def get_angle(self):
         with self._lock:
             return self._angle
