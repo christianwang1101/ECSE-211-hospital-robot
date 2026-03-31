@@ -29,20 +29,22 @@ SPEED_DPS_STRAIGHT = 200
 SPEED_DPS_TURN = 100
 DISTANCE_CM_TURN = 10.5  # for 90 deg turn
 
-# Hallway navigation tuning constants
-HALLWAY_BASE_SPEED = 200  # dps, nominal forward speed
-HALLWAY_GYRO_CORRECTION_SCALE = 4.0  # dps correction per degree of gyro error
-HALLWAY_WALL_CORRECTION_SCALE = 3.0  # dps correction per cm of wall distance error
-HALLWAY_MIN_SPEED = 80  # dps floor (keep robot moving)
-HALLWAY_MAX_SPEED = 300  # dps ceiling (prevent wheel slip)
-HALLWAY_LOOP_SLEEP = 0.02  # seconds between control loop iterations
-HALLWAY_CORRECTION_THRESHOLD = (
-    3  # degrees; gyro error that triggers in-place pivot correction
-)
-HALLWAY_CORRECTION_US_THRESHOLD = 2
-HALLWAY_CORRECTION_SPEED = 150  # dps for in-place correction pivots
-HALLWAY_CORRECTION_TOLERANCE = 3  # degrees; stop correcting when within this
-HALLWAY_CORRECTION_TIMEOUT = 1.5  # seconds; max time for a single in-place correction
+# Hallway navigation PID constants
+HALLWAY_BASE_SPEED = 200        # dps, nominal forward speed
+HALLWAY_MIN_SPEED = 80          # dps floor (keep robot moving)
+HALLWAY_MAX_SPEED = 300         # dps ceiling (prevent wheel slip)
+HALLWAY_LOOP_SLEEP = 0.02       # seconds between control loop iterations
+
+# Combined error: weighted_error = GYRO_WEIGHT * gyro_error + US_WEIGHT * us_error
+# gyro_error: degrees (angle - straight_angle)
+# us_error:   cm     (current_distance - target_distance)
+HALLWAY_GYRO_WEIGHT = 1.0       # weight on gyro error term
+HALLWAY_US_WEIGHT = 2.0         # weight on US wall-distance error term
+
+HALLWAY_KP = 5.0                # proportional gain
+HALLWAY_KI = 0.1                # integral gain
+HALLWAY_KD = 1.0                # derivative gain
+HALLWAY_INTEGRAL_CLAMP = 50.0   # anti-windup: clamp integral accumulator
 
 # -----------------------------------------------------
 # Colour sensor config
