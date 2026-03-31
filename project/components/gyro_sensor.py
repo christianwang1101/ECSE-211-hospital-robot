@@ -6,8 +6,8 @@ import threading
 DPS_DEADBAND = 2
 POLL_INTERVAL = 0.05  # seconds
 
-class GyroSensor:
 
+class GyroSensor:
     def __init__(self):
         self._sensor = EV3GyroSensor(PORT_GYRO, mode=EV3GyroSensor.Mode.BOTH)
         self._sensor.wait_ready()
@@ -28,9 +28,12 @@ class GyroSensor:
 
     def _poll(self):
         while True:
-            angle = self.read_angle()
-            with self._lock:
-                self._angle = angle
+            try:
+                angle = self.read_angle()
+                with self._lock:
+                    self._angle = angle
+            except Exception as e:
+                print(f"Gyro poll error: {e}")
             sleep(POLL_INTERVAL)
 
     def get_angle(self):
@@ -41,7 +44,17 @@ class GyroSensor:
         """Poll the gyro sensor and return the current angle (degrees) relative
         to the origin set at initialization. Filters out drift using DPS_DEADBAND."""
         while True:
-            reading = self._sensor.get_both_measure()
+            try:
+                reading = self._sensor.get_both_measure()
+            except Exception:
+                # Sensor mode was reset (e.g. by motor voltage spike); reconfigure and retry
+                try:
+                    self._sensor.set_mode(EV3GyroSensor.Mode.BOTH)
+                    self._sensor.wait_ready()
+                except Exception:
+                    pass
+                sleep(POLL_INTERVAL)
+                continue
             if reading is not None:
                 current, dps = reading
                 if abs(dps) >= DPS_DEADBAND:

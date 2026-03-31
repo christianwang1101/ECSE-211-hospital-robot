@@ -36,6 +36,13 @@ HALLWAY_WALL_CORRECTION_SCALE = 3.0  # dps correction per cm of wall distance er
 HALLWAY_MIN_SPEED = 80  # dps floor (keep robot moving)
 HALLWAY_MAX_SPEED = 300  # dps ceiling (prevent wheel slip)
 HALLWAY_LOOP_SLEEP = 0.02  # seconds between control loop iterations
+HALLWAY_CORRECTION_THRESHOLD = (
+    3  # degrees; gyro error that triggers in-place pivot correction
+)
+HALLWAY_CORRECTION_US_THRESHOLD = 2
+HALLWAY_CORRECTION_SPEED = 150  # dps for in-place correction pivots
+HALLWAY_CORRECTION_TOLERANCE = 3  # degrees; stop correcting when within this
+HALLWAY_CORRECTION_TIMEOUT = 1.5  # seconds; max time for a single in-place correction
 
 # -----------------------------------------------------
 # Colour sensor config

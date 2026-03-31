@@ -1,9 +1,10 @@
-from utils.brick import Motor
-from components.gyro_sensor import GyroSensor
-from components.colour_sensor import ColourSensor
+from access_components import (
+    get_left_motor,
+    get_right_motor,
+    get_gyro_sensor,
+    get_colour_sensor,
+)
 from config.settings import (
-    PORT_MOTOR_LEFT,
-    PORT_MOTOR_RIGHT,
     SPEED_DPS_TURN,
     SPEED_DPS_STRAIGHT,
     DISTANCE_CM_TURN,
@@ -14,17 +15,12 @@ import math
 import time
 
 # Initialize navigation motors
-LEFT_MOTOR = Motor(PORT_MOTOR_LEFT)
-RIGHT_MOTOR = Motor(PORT_MOTOR_RIGHT)
+LEFT_MOTOR = get_left_motor()
+RIGHT_MOTOR = get_right_motor()
 
 # Initialize hardware
-GYRO_SENSOR = GyroSensor()
-COLOUR_SENSOR = ColourSensor()
-
-GYRO_SENSOR.start()
-COLOUR_SENSOR.start()
-
-print("Finished initialization.")
+GYRO_SENSOR = get_gyro_sensor()
+COLOUR_SENSOR = get_colour_sensor()
 
 
 def stop_motors():
@@ -55,11 +51,11 @@ def turn_without_gyro(is_left, speed_dps=SPEED_DPS_TURN, distance_cm=DISTANCE_CM
     linear_speed = RADIUS_WHEEL * math.radians(speed_dps)  # cm/s
 
     if is_left:
-        LEFT_MOTOR.set_dps(speed_dps)
-        RIGHT_MOTOR.set_dps(-speed_dps)
-    else:
         LEFT_MOTOR.set_dps(-speed_dps)
         RIGHT_MOTOR.set_dps(speed_dps)
+    else:
+        LEFT_MOTOR.set_dps(speed_dps)
+        RIGHT_MOTOR.set_dps(-speed_dps)
     time.sleep(distance_cm / linear_speed)
     stop_motors()
 
@@ -80,15 +76,22 @@ def turn_to_with_gyro(target_angle, speed_dps=SPEED_DPS_TURN, timeout=1.5, wait_
         if current_angle is None:
             time.sleep(0.02)
             continue
+        elif target_angle - 3 < current_angle < target_angle + 3:
+            break
 
-        error = ((target_angle - current_angle + 540) % 360) - 180
+        error = ((target_angle - current_angle + 180) % 360) - 180
         if abs(error) <= 2:
             break
 
-        if error > 0:
+        print("Current angle: " + str(current_angle))
+        print("Error: " + str(error))
+
+        if error < 0:
+            # left
             LEFT_MOTOR.set_dps(-speed_dps)
             RIGHT_MOTOR.set_dps(speed_dps)
         else:
+            # right
             LEFT_MOTOR.set_dps(speed_dps)
             RIGHT_MOTOR.set_dps(-speed_dps)
 

@@ -1,9 +1,14 @@
 from utils.brick import EV3ColorSensor, wait_ready_sensors
 from time import sleep
-from config.settings import PORT_COLOR_SENSOR, COLOUR_READINGS_MAP, COLOUR_LUMINOSITY_MAP
+from config.settings import (
+    PORT_COLOR_SENSOR,
+    COLOUR_READINGS_MAP,
+    COLOUR_LUMINOSITY_MAP,
+)
 from collections import Counter
 import math
 import threading
+
 
 class ColourSensor:
     SAMPLE_SIZE = 5
@@ -23,9 +28,12 @@ class ColourSensor:
 
     def _poll(self):
         while True:
-            colour = self.read_colour()
-            with self._lock:
-                self._colour = colour
+            try:
+                colour = self.read_colour()
+                with self._lock:
+                    self._colour = colour
+            except Exception as e:
+                print(f"Colour poll error: {e}")
 
     def get_colour(self):
         with self._lock:
@@ -35,7 +43,12 @@ class ColourSensor:
         r, g, b = color_data[:3]
         denominator = float(r) + float(g) + float(b)
         if denominator != 0:
-            return float(r) / denominator, float(g) / denominator, float(b) / denominator, denominator
+            return (
+                float(r) / denominator,
+                float(g) / denominator,
+                float(b) / denominator,
+                denominator,
+            )
         return 0, 0, 0, 0
 
     def _classify(self, normalized):
@@ -63,11 +76,22 @@ class ColourSensor:
         while True:
             readings = []
             for _ in range(self.SAMPLE_SIZE):
-                data = self._sensor.get_value()
+                try:
+                    data = self._sensor.get_value()
+                except Exception:
+                    try:
+                        self._sensor.set_mode(self._sensor.Mode.COMPONENT)
+                        self._sensor.wait_ready()
+                    except Exception:
+                        pass
+                    sleep(self.POLL_INTERVAL)
+                    continue
                 if data is not None:
                     readings.append(self._classify(self._normalize(data)))
                 sleep(self.POLL_INTERVAL)
 
+            if not readings:
+                continue
             counts = Counter(readings)
             top_colour, top_count = counts.most_common(1)[0]
             if top_count >= self.MIN_CONSENSUS:

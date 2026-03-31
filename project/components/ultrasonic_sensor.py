@@ -7,7 +7,6 @@ POLL_INTERVAL = 0.05  # seconds
 
 
 class UltrasonicSensor:
-
     def __init__(self):
         self._sensor = EV3UltrasonicSensor(PORT_ULTRASONIC)
         wait_ready_sensors(True)
@@ -21,9 +20,12 @@ class UltrasonicSensor:
 
     def _poll(self):
         while True:
-            distance = self.read_distance()
-            with self._lock:
-                self._distance = distance
+            try:
+                distance = self.read_distance()
+                with self._lock:
+                    self._distance = distance
+            except Exception as e:
+                print(f"US poll error: {e}")
             sleep(POLL_INTERVAL)
 
     def get_distance(self):
@@ -34,7 +36,16 @@ class UltrasonicSensor:
         """Poll the ultrasonic sensor continuously until a valid reading is
         returned. Returns the distance in cm."""
         while True:
-            distance = self._sensor.get_value()
+            try:
+                distance = self._sensor.get_value()
+            except Exception:
+                try:
+                    self._sensor.set_mode(self._sensor.Mode.CM)
+                    self._sensor.wait_ready()
+                except Exception:
+                    pass
+                sleep(POLL_INTERVAL)
+                continue
             if distance is not None:
                 return distance
             sleep(POLL_INTERVAL)
