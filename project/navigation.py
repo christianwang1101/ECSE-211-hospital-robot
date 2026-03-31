@@ -6,11 +6,6 @@ from config.settings import (
     HALLWAY_MIN_SPEED,
     HALLWAY_MAX_SPEED,
     HALLWAY_LOOP_SLEEP,
-    HALLWAY_CORRECTION_THRESHOLD,
-    HALLWAY_CORRECTION_SPEED,
-    HALLWAY_CORRECTION_TOLERANCE,
-    HALLWAY_CORRECTION_TIMEOUT,
-    HALLWAY_CORRECTION_US_THRESHOLD,
 )
 from access_components import get_gyro_sensor, get_colour_sensor, get_ultrasonic_sensor
 from block_collection import collect_block
@@ -60,51 +55,19 @@ def navigate_pharmacy():
     turn_to_with_gyro(0)
 
 
-def _correct_heading(straight_angle, distance_wall):
-    """
-    Pivot in place to realign with straight_angle (like turn_to_with_gyro).
-    US wall distance scales pivot speed: too close to wall → more aggressive correction.
-    """
-    t_start = time.time()
-    while time.time() - t_start < HALLWAY_CORRECTION_TIMEOUT:
-        angle = GYRO_SENSOR.get_angle()
-        distance = US_SENSOR.get_distance()
-        if angle is None:
-            time.sleep(HALLWAY_LOOP_SLEEP)
-            continue
-
-        gyro_error = ((straight_angle - angle + 180) % 360) - 180
-        us_error = distance - distance_wall
-
-        # If heading is significantly off, pivot in place to realign (gyro + US aided)
-        if (
-            abs(gyro_error) <= HALLWAY_CORRECTION_THRESHOLD
-            and abs(us_error) <= HALLWAY_CORRECTION_US_THRESHOLD
-        ):
-            break
-
-        distance = US_SENSOR.get_distance()
-        us_error = (distance_wall - distance) if distance is not None else 0.0
-
-        speed = HALLWAY_CORRECTION_SPEED + HALLWAY_WALL_CORRECTION_SCALE * us_error
-        speed = max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, speed))
-
-        if gyro_error < 0 or us_error > 0:
-            set_motor_left_dps(-int(speed))
-            set_motor_right_dps(int(speed))
-        else:
-            set_motor_left_dps(int(speed))
-            set_motor_right_dps(-int(speed))
-
-        time.sleep(HALLWAY_LOOP_SLEEP)
-
-    stop_motors()
-
-
 def navigate_hallway(distance_wall, num_black_lines, straight_angle):
     """
-    Navigates the robot through the hallways of the obstacle course using proportional
-    differential steering — no blocking turns, robot stays in motion throughout.
+    Navigates the robot through the hallways of the obstacle course using continuous
+    weighted differential steering — the robot stays in motion and steers
+    proportionally based on both gyro heading error and left-wall distance error.
+
+    correction = K_gyro * gyro_error - K_us * us_error
+      left_speed  = base + correction
+      right_speed = base - correction
+
+    Sign convention (flip K_gyro sign in settings if gyro is mounted inverted):
+      gyro_error > 0  (pointing left of target) → positive correction → steers right
+      us_error   > 0  (too far from wall)        → negative contribution → steers left
 
     Parameters:
     - distance_wall (cm): target distance from the left wall
@@ -146,21 +109,20 @@ def navigate_hallway(distance_wall, num_black_lines, straight_angle):
             else:
                 on_black_line = False
 
-            gyro_error = ((straight_angle - angle + 180) % 360) - 180
-            us_error = distance - distance_wall
+            # Compute weighted correction; use 0 for a sensor if its reading is unavailable
+            gyro_error = (((straight_angle - angle) + 180) % 360) - 180 if angle is not None else 0.0
+            us_error = (distance - distance_wall) if distance is not None else 0.0
 
-            # If gyro or distance is significantly off, pivot in place to realign (gyro + US aided)
-            if (
-                abs(gyro_error) > HALLWAY_CORRECTION_THRESHOLD
-                or abs(us_error) > HALLWAY_CORRECTION_US_THRESHOLD
-            ):
-                print("need to correct gyro by: " + str(gyro_error))
-                print("need to correct distance by: " + str(us_error))
-                _correct_heading(straight_angle, distance_wall)
-                continue
+            correction = (
+                HALLWAY_GYRO_CORRECTION_SCALE * gyro_error
+                - HALLWAY_WALL_CORRECTION_SCALE * us_error
+            )
 
-            set_motor_left_dps(int(HALLWAY_BASE_SPEED))
-            set_motor_right_dps(int(HALLWAY_BASE_SPEED))
+            left_speed = int(max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED + correction)))
+            right_speed = int(max(HALLWAY_MIN_SPEED, min(HALLWAY_MAX_SPEED, HALLWAY_BASE_SPEED - correction)))
+
+            set_motor_left_dps(left_speed)
+            set_motor_right_dps(right_speed)
 
             time.sleep(HALLWAY_LOOP_SLEEP)
         except Exception as e:
