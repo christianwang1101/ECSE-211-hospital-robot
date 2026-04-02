@@ -57,7 +57,7 @@ def turn_without_gyro(
     """
     linear_speed = RADIUS_WHEEL * math.radians(speed_dps)  # cm/s
     duration = distance_cm / linear_speed
-    poll_interval = 0.02
+    poll_interval = 0.01
 
     if is_left:
         LEFT_MOTOR.set_dps(-speed_dps)
@@ -73,6 +73,7 @@ def turn_without_gyro(
         if stop_condition is not None:
             result = stop_condition()
             if result is not None:
+                print("STOPPED CONDITION MET")
                 stop_motors()
                 return result
 
@@ -137,42 +138,54 @@ def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
 
     def stop_on_colour():
         # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
-        colour = COLOUR_SENSOR.get_colour()
+        colour = COLOUR_SENSOR.get_colour_instant()
+        print("COLOUR: " + str(colour))
         if colour == "GREEN":
             return True
         if colour == "RED":
             return False
         return None
 
-    LEFT_MOTOR.set_limits(dps=100)
-    RIGHT_MOTOR.set_limits(dps=100)
+    dps = 60
 
     for num_forward_increments in range(max_sweeps):
         state = turn_without_gyro(
-            is_left=True, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+            is_left=True,
+            speed_dps=dps,
+            distance_cm=sweep_distance_cm,
+            stop_condition=stop_on_colour,
         )  # go left
         if state is not None:
             return state, num_forward_increments
 
         state = turn_without_gyro(
-            is_left=False, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+            is_left=False,
+            speed_dps=dps,
+            distance_cm=sweep_distance_cm,
+            stop_condition=stop_on_colour,
         )  # go back to center
         if state is not None:
             return state, num_forward_increments
 
         state = turn_without_gyro(
-            is_left=False, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+            is_left=False,
+            speed_dps=dps,
+            distance_cm=sweep_distance_cm,
+            stop_condition=stop_on_colour,
         )  # go right
         if state is not None:
             return state, num_forward_increments
 
         state = turn_without_gyro(
-            is_left=True, distance_cm=sweep_distance_cm, stop_condition=stop_on_colour
+            is_left=True,
+            speed_dps=dps,
+            distance_cm=sweep_distance_cm,
+            stop_condition=stop_on_colour,
         )  # go back to center
         if state is not None:
             return state, num_forward_increments
 
-        move_straight(distance_cm=move_forward_cm, is_forward=True)
+        move_straight(distance_cm=move_forward_cm, is_forward=True, speed_dps=500)
 
     return False, max_sweeps - 1
 

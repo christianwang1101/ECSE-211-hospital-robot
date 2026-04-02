@@ -39,6 +39,17 @@ class ColourSensor:
         with self._lock:
             return self._colour
 
+    def get_colour_instant(self):
+        """Read and classify a single sample synchronously. Lower latency than
+        get_colour() but less noise-filtered — use for time-sensitive checks."""
+        try:
+            data = self._sensor.get_value()
+        except Exception:
+            return None
+        if data is None:
+            return None
+        return self._classify(self._normalize(data))
+
     def _normalize(self, color_data):
         r, g, b = color_data[:3]
         denominator = float(r) + float(g) + float(b)

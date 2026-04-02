@@ -30,21 +30,28 @@ SPEED_DPS_TURN = 100
 DISTANCE_CM_TURN = 10.5  # for 90 deg turn
 
 # Hallway navigation PID constants
-HALLWAY_BASE_SPEED = 120       # dps, nominal forward speed
-HALLWAY_MIN_SPEED = 90         # dps floor (keep robot moving)
-HALLWAY_MAX_SPEED = 160       # dps ceiling (prevent wheel slip)
-HALLWAY_LOOP_SLEEP = 0.02       # seconds between control loop iterations
+
+FAST_HALLWAY_BASE_SPEED = 260  # dps, nominal forward speed
+FAST_HALLWAY_MIN_SPEED = 230  # dps floor (keep robot moving)
+FAST_HALLWAY_MAX_SPEED = 300  # dps ceiling (prevent wheel slip)
+HALLWAY_BASE_SPEED = 120  # dps, nominal forward speed
+HALLWAY_MIN_SPEED = 90  # dps floor (keep robot moving)
+HALLWAY_MAX_SPEED = 160  # dps ceiling (prevent wheel slip)
+
+FAST_HALLWAY_BASE_SPEED = 260  # dps, nominal forward speed
+FAST_HALLWAY_MIN_SPEED = 230  # dps floor (keep robot moving)
+FAST_HALLWAY_MAX_SPEED = 300  # dps ceiling (prevent wheel slip)
+HALLWAY_LOOP_SLEEP = 0.02  # seconds between control loop iterations
 
 # Combined error: weighted_error = GYRO_WEIGHT * gyro_error + US_WEIGHT * us_error
 # gyro_error: degrees (angle - straight_angle)
 # us_error:   cm     (current_distance - target_distance)
-HALLWAY_GYRO_WEIGHT = 1.0       # weight on gyro error term
-# HALLWAY_US_WEIGHT = 15        # weight on US wall-distance error term
+HALLWAY_GYRO_WEIGHT = 1.0  # weight on gyro error term
 
-HALLWAY_KP = 10.0                # proportional gain
-HALLWAY_KI = 0.1                # integral gain
-HALLWAY_KD = 2.0                # derivative gain
-HALLWAY_INTEGRAL_CLAMP = 50.0   # anti-windup: clamp integral accumulator
+HALLWAY_KP = 10.0  # proportional gain
+HALLWAY_KI = 0.1  # integral gain
+HALLWAY_KD = 2.0  # derivative gain
+HALLWAY_INTEGRAL_CLAMP = 50.0  # anti-windup: clamp integral accumulator
 
 # -----------------------------------------------------
 # Colour sensor config

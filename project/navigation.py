@@ -3,6 +3,9 @@ from config.settings import (
     HALLWAY_BASE_SPEED,
     HALLWAY_MIN_SPEED,
     HALLWAY_MAX_SPEED,
+    FAST_HALLWAY_BASE_SPEED,
+    FAST_HALLWAY_MIN_SPEED,
+    FAST_HALLWAY_MAX_SPEED,
     HALLWAY_LOOP_SLEEP,
     HALLWAY_GYRO_WEIGHT,
     HALLWAY_KP,
@@ -11,7 +14,7 @@ from config.settings import (
     HALLWAY_INTEGRAL_CLAMP,
 )
 from access_components import get_gyro_sensor, get_colour_sensor, get_ultrasonic_sensor
-from block_collection import collect_block, spin_dispeser_motor_once
+from block_collection import collect_block, spin_dispeser_motor_once, drop_off
 from move import (
     move_straight,
     turn_without_gyro,
@@ -32,17 +35,16 @@ US_SENSOR = get_ultrasonic_sensor()
 
 def start_navigation():
     try:
-        navigate_single_room()
-
-        """
         # pharmacy
         navigate_pharmacy()
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
-        
+
         # first hallway segment to Room 1
-        navigate_hallway(distance_wall=4, straight_angle=0, us_weight=15, timeout=9)
-        move_straight(distance_cm=2.7, is_forward=False)  # back out
+        navigate_hallway(
+            distance_wall=5, straight_angle=0, us_weight=15, is_fast=False, timeout=9
+        )
+        # move_straight(distance_cm=2.7, is_forward=False)  # back out
         navigate_single_room()
 
         # get into place for second hallway segment
@@ -52,8 +54,12 @@ def start_navigation():
         print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
 
         # second hallway segment to Room 2
-        navigate_hallway(distance_wall=55, straight_angle=0, us_weight=10, timeout=11)
+        navigate_hallway(
+            distance_wall=55, straight_angle=0, us_weight=10, is_fast=True, timeout=4.5
+        )
         turn_without_gyro(is_left=True, distance_cm=10.5)  # turn into room
+        GYRO_SENSOR.reset_angle()
+        time.sleep(1)
         move_straight(distance_cm=2.7, is_forward=False)  # back out
         navigate_single_room()
 
@@ -64,11 +70,14 @@ def start_navigation():
         print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
 
         # third hallway segment to Room 3
-        navigate_hallway(distance_wall=53, straight_angle=0, us_weight=8, timeout=6)
+        navigate_hallway(
+            distance_wall=53, straight_angle=0, is_fast=True, us_weight=8, timeout=6
+        )
         turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
+        GYRO_SENSOR.reset_angle()
         move_straight(distance_cm=2.7, is_forward=False)  # back out
         navigate_double_room()  # TODO
-        """
+
     except KeyboardInterrupt:
         print("\nShutting down...")
         # TODO: emergency stop, reset motors
@@ -83,12 +92,12 @@ def navigate_pharmacy():
     The robot starts in this area and needs to move around.
     """
     collect_block()
-    move_straight(distance_cm=2.7, is_forward=False)
+    move_straight(distance_cm=7.5, is_forward=False)
     turn_without_gyro(is_left=True, distance_cm=2.4)
-    move_straight(distance_cm=2.5, is_forward=True)
+    move_straight(distance_cm=8.2, is_forward=True)
     collect_block()
-    move_straight(distance_cm=10, is_forward=False)
-    turn_without_gyro(is_left=True, distance_cm=10.5)
+    move_straight(distance_cm=7, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm=9.3)
 
 
 def navigate_single_room():
@@ -104,26 +113,29 @@ def navigate_single_room():
 
     start_angle = GYRO_SENSOR.get_angle()
     move_forward_cm = 8
-    sweep_distance_cm = 2.4
+    sweep_distance_cm = 2.8
 
     green_bed_found, num_forward_increments = sweep(
         max_sweeps=5,
         move_forward_cm=move_forward_cm,
         sweep_distance_cm=sweep_distance_cm,
     )
+    time.sleep(2)
     if green_bed_found:
-        move_straight(3, is_forward=True)
-        spin_dispeser_motor_once()  # drop off block
+        print("NAVIGATION.PY - green bed foudn")
+        move_straight(9, is_forward=True)
+        drop_off()  # drop off block
 
-    turn_to_with_gyro(start_angle)  # reorient back to center
     move_straight(
         num_forward_increments * move_forward_cm, is_forward=False
     )  # go backwards to starting position
 
+    turn_to_with_gyro(start_angle)  # reorient back to center
+
     print("finished navigating single room")
 
 
-def navigate_double_room(min_distance_wall, straight_angle):
+def navigate_double_room():
     """
     Navigates the robot through a double-bed room, scanning
     the bed and detecting its position, then dropping off the block if necessary
@@ -137,7 +149,7 @@ def navigate_double_room(min_distance_wall, straight_angle):
     pass
 
 
-def navigate_hallway(distance_wall, straight_angle, us_weight, timeout=None):
+def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=None):
     """
     Navigates the robot through the hallways of the obstacle course using a PID
     controller that fuses gyro heading and left-wall US distance into a single
@@ -224,14 +236,30 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, timeout=None):
             print("correction: " + str(correction))
 
             # Positive correction steers left: left slower, right faster
-            left_speed = max(
-                HALLWAY_MIN_SPEED,
-                min(HALLWAY_MAX_SPEED, int(HALLWAY_BASE_SPEED - correction)),
-            )
-            right_speed = max(
-                HALLWAY_MIN_SPEED,
-                min(HALLWAY_MAX_SPEED, int(HALLWAY_BASE_SPEED + correction)),
-            )
+            if is_fast:
+                left_speed = max(
+                    FAST_HALLWAY_MIN_SPEED,
+                    min(
+                        FAST_HALLWAY_MAX_SPEED,
+                        int(FAST_HALLWAY_BASE_SPEED - correction),
+                    ),
+                )
+                right_speed = max(
+                    FAST_HALLWAY_MIN_SPEED,
+                    min(
+                        FAST_HALLWAY_MAX_SPEED,
+                        int(FAST_HALLWAY_BASE_SPEED + correction),
+                    ),
+                )
+            else:
+                left_speed = max(
+                    HALLWAY_MIN_SPEED,
+                    min(HALLWAY_MAX_SPEED, int(HALLWAY_BASE_SPEED - correction)),
+                )
+                right_speed = max(
+                    HALLWAY_MIN_SPEED,
+                    min(HALLWAY_MAX_SPEED, int(HALLWAY_BASE_SPEED + correction)),
+                )
 
             print("left_speed: " + str(left_speed))
             print("right_speed: " + str(right_speed))
