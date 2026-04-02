@@ -174,7 +174,7 @@ def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
 
         move_straight(distance_cm=move_forward_cm, is_forward=True)
 
-    return False
+    return False, max_sweeps - 1
 
 
 def set_motor_left_dps(dps):

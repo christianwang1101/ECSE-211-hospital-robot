@@ -32,11 +32,14 @@ US_SENSOR = get_ultrasonic_sensor()
 
 def start_navigation():
     try:
+        navigate_single_room()
+
+        """
         # pharmacy
         navigate_pharmacy()
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
-
+        
         # first hallway segment to Room 1
         navigate_hallway(distance_wall=4, straight_angle=0, us_weight=15, timeout=9)
         move_straight(distance_cm=2.7, is_forward=False)  # back out
@@ -65,7 +68,7 @@ def start_navigation():
         turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
         move_straight(distance_cm=2.7, is_forward=False)  # back out
         navigate_double_room()  # TODO
-
+        """
     except KeyboardInterrupt:
         print("\nShutting down...")
         # TODO: emergency stop, reset motors
@@ -88,7 +91,7 @@ def navigate_pharmacy():
     turn_without_gyro(is_left=True, distance_cm=10.5)
 
 
-def navigate_single_room(min_distance_wall, straight_angle):
+def navigate_single_room():
     """
     Navigates the robot through a single-bed room, scanning
     the bed and detecting its position, then dropping off the block if necessary
@@ -100,7 +103,7 @@ def navigate_single_room(min_distance_wall, straight_angle):
     print("navigating single room")
 
     start_angle = GYRO_SENSOR.get_angle()
-    move_forward_cm = 3
+    move_forward_cm = 8
     sweep_distance_cm = 2.4
 
     green_bed_found, num_forward_increments = sweep(
@@ -109,6 +112,7 @@ def navigate_single_room(min_distance_wall, straight_angle):
         sweep_distance_cm=sweep_distance_cm,
     )
     if green_bed_found:
+        move_straight(3, is_forward=True)
         spin_dispeser_motor_once()  # drop off block
 
     turn_to_with_gyro(start_angle)  # reorient back to center
