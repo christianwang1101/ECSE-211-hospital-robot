@@ -44,8 +44,9 @@ def start_navigation():
         navigate_hallway(
             distance_wall=5, straight_angle=0, us_weight=15, is_fast=False, timeout=9
         )
-        # move_straight(distance_cm=2.7, is_forward=False)  # back out
+        move_straight(distance_cm=5, is_forward=True)  # go forward a bit
         navigate_single_room()
+        move_straight(distance_cm=3, is_forward=False)  # go back a bit
 
         # get into place for second hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
@@ -55,12 +56,11 @@ def start_navigation():
 
         # second hallway segment to Room 2
         navigate_hallway(
-            distance_wall=55, straight_angle=0, us_weight=10, is_fast=True, timeout=4.5
+            distance_wall=55, straight_angle=0, us_weight=10, is_fast=True, timeout=4.8
         )
         turn_without_gyro(is_left=True, distance_cm=10.5)  # turn into room
         GYRO_SENSOR.reset_angle()
         time.sleep(1)
-        move_straight(distance_cm=2.7, is_forward=False)  # back out
         navigate_single_room()
 
         # get into place for third hallway segment
@@ -112,8 +112,8 @@ def navigate_single_room():
     print("navigating single room")
 
     start_angle = GYRO_SENSOR.get_angle()
-    move_forward_cm = 8
-    sweep_distance_cm = 2.8
+    move_forward_cm = 10
+    sweep_distance_cm = 2.6
 
     green_bed_found, num_forward_increments = sweep(
         max_sweeps=5,

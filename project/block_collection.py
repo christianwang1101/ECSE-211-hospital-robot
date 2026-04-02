@@ -79,8 +79,8 @@ def drop_off():
     dispenser_motor.reset_encoder()
 
     try:
-        dispenser_motor.set_limits(dps= DISPENSER_MOTOR__DROPOFF_DPS )
-        seconds = abs(DISPENSER_MOTOR_TURN_DEGREES) / float(DISPENSER_MOTOR__DROPOFF_DPS)
+        dispenser_motor.set_limits(dps= DISPENSER_MOTOR_DROPOFF_DPS )
+        seconds = abs(DISPENSER_MOTOR_TURN_DEGREES) / float(DISPENSER_MOTOR_DROPOFF_DPS)
         print(
             f"Turning second motor on port {PORT_MOTOR_DISPENSER} by {DISPENSER_MOTOR_TURN_DEGREES} degrees at {DISPENSER_MOTOR_DPS} dps..."
         )
