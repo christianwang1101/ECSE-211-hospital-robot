@@ -10,6 +10,7 @@ from config.settings import (
     SCOOPER_MOTOR_TURN_DEGREES,
     DISPENSER_MOTOR_DPS_IN,
     DISPENSER_MOTOR_DPS_OUT,
+    DISPENSER_MOTOR_DROPOFF_DPS
 )
 
 
@@ -52,29 +53,43 @@ def spin_dispeser_motor_once():
         print(
             f"Turning second motor on port {PORT_MOTOR_DISPENSER} by {DISPENSER_MOTOR_TURN_DEGREES} degrees at {DISPENSER_MOTOR_DPS} dps..."
         )
-        dispenser_motor.set_position_relative(70)
+        dispenser_motor.set_position_relative(-70)
         time.sleep(seconds + MOTOR_SETTLE_SECONDS)
         
         dispenser_motor.set_limits(dps= 150)
         
-        dispenser_motor.set_position_relative(-45)
+        dispenser_motor.set_position_relative(45)
         time.sleep(seconds + MOTOR_SETTLE_SECONDS)
         
         
         dispenser_motor.set_limits(dps= 150)
         
-        dispenser_motor.set_position_relative(69)
+        dispenser_motor.set_position_relative(-69)
         time.sleep(seconds + MOTOR_SETTLE_SECONDS)
-        
-        
-        
-        
         
 
         print("Stored block.")
     finally:
         dispenser_motor.set_power(0)
 
+
+def drop_off():
+    """Rotate a second motor by a fixed amount (default 90 degrees)."""
+    dispenser_motor = Motor(PORT_MOTOR_DISPENSER)
+    dispenser_motor.reset_encoder()
+
+    try:
+        dispenser_motor.set_limits(dps= DISPENSER_MOTOR__DROPOFF_DPS )
+        seconds = abs(DISPENSER_MOTOR_TURN_DEGREES) / float(DISPENSER_MOTOR__DROPOFF_DPS)
+        print(
+            f"Turning second motor on port {PORT_MOTOR_DISPENSER} by {DISPENSER_MOTOR_TURN_DEGREES} degrees at {DISPENSER_MOTOR_DPS} dps..."
+        )
+        dispenser_motor.set_position_relative(-120)
+        time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        
+        print("Dropped Block.")
+    finally:
+        dispenser_motor.set_power(0)
 
 def collect_block():
     """Turn broom motor out/back, then rotate a second motor by 90 degrees."""
