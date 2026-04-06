@@ -14,7 +14,7 @@ from config.settings import (
     HALLWAY_INTEGRAL_CLAMP,
 )
 from access_components import get_gyro_sensor, get_colour_sensor, get_ultrasonic_sensor
-from block_collection import collect_block, spin_dispeser_motor_once, drop_off
+from block_collection import collect_block, drop_off
 from move import (
     move_straight,
     turn_without_gyro,
@@ -24,19 +24,34 @@ from move import (
     stop_motors,
     sweep,
 )
+from components.speaker import Speaker
+from project.components.touch_sensor import TouchSensor
 
 import time
+import threading
+import _thread
 
 # Initialize hardware
 COLOUR_SENSOR = get_colour_sensor()
 GYRO_SENSOR = get_gyro_sensor()
 US_SENSOR = get_ultrasonic_sensor()
+SPEAKER = Speaker()
+EMERGENCY_STOP = TouchSensor()
+
+
+def _watch_emergency_stop():
+    while True:
+        if EMERGENCY_STOP.stop_pressed():
+            print("\nEmergency stop pressed!")
+            _thread.interrupt_main()
+            return
+        time.sleep(0.05)
 
 
 def start_navigation():
+    threading.Thread(target=_watch_emergency_stop, daemon=True).start()
     try:
-        
-        # pharmacy        
+        # pharmacy
         navigate_pharmacy()
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
@@ -77,13 +92,11 @@ def start_navigation():
         turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
         GYRO_SENSOR.reset_angle()
         move_straight(distance_cm=2.7, is_forward=False)  # back out
-        
-        navigate_double_room()  # TODO
-        
+
+        navigate_double_room()
 
     except KeyboardInterrupt:
         print("\nShutting down...")
-        # TODO: emergency stop, reset motors
     finally:
         reset_brick()
         exit()
@@ -113,8 +126,7 @@ def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
     print("navigating single room")
-    #TODO: fix robot seeming to not rotate
-    #TODO: set max sweeps
+    # TODO: set max sweeps
 
     start_angle = GYRO_SENSOR.get_angle()
     move_forward_cm = 10
@@ -123,26 +135,31 @@ def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
         max_sweeps=5,
         move_forward_cm=move_forward_cm,
         sweep_distance_cm=sweep_distance_cm,
-        sweep_distance_cm_right=sweep_distance_cm_right
+        sweep_distance_cm_right=sweep_distance_cm_right,
     )
     time.sleep(2)
     if green_bed_found:
         print("NAVIGATION.PY - green bed foudn")
         move_straight(9, is_forward=True)
         drop_off()  # drop off block
+        SPEAKER.play_note("C4")
     print("num forward increments: " + str(num_forward_increments))
 
-    if (num_forward_increments >= 3):
-        
-        move_straight(num_forward_increments * (1/3) * move_forward_cm, is_forward=False) # go backwards to starting position
-        
+    if num_forward_increments >= 3:
+        move_straight(
+            num_forward_increments * (1 / 3) * move_forward_cm, is_forward=False
+        )  # go backwards to starting position
+
         turn_to_with_gyro(start_angle)  # reorient back to center
-        move_straight(num_forward_increments * (2/3) * move_forward_cm, is_forward=False)
-    
+        move_straight(
+            num_forward_increments * (2 / 3) * move_forward_cm, is_forward=False
+        )
+
     else:
-        move_straight(num_forward_increments * move_forward_cm, is_forward=False) # go backwards to starting position
+        move_straight(
+            num_forward_increments * move_forward_cm, is_forward=False
+        )  # go backwards to starting position
         turn_to_with_gyro(start_angle)  # reorient back to center
-        
 
     print("finished navigating single room")
 
@@ -164,7 +181,9 @@ def navigate_double_room():
     turn_without_gyro(is_left=True, distance_cm=5)
     GYRO_SENSOR.reset_angle()
     time.sleep(0.5)
-    navigate_hallway(distance_wall=5.5, straight_angle=0, us_weight=15, is_fast=False, timeout=6)
+    navigate_hallway(
+        distance_wall=5.5, straight_angle=0, us_weight=15, is_fast=False, timeout=6
+    )
     time.sleep(1)
     navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.6)
 
@@ -175,7 +194,7 @@ def navigate_double_room():
     GYRO_SENSOR.reset_angle()
     navigate_single_room()
     """
-    
+
     pass
 
 
@@ -301,6 +320,13 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
             time.sleep(HALLWAY_LOOP_SLEEP)
         except Exception as e:
             print("navigate_hallway error: " + str(e))
+
+
+def play_victory_sound():
+    SPEAKER.play_note("C4")
+    SPEAKER.play_note("D4")
+    SPEAKER.play_note("C4")
+    SPEAKER.play_note("E4")
 
 
 if __name__ == "__main__":

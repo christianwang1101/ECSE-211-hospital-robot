@@ -21,6 +21,7 @@ class Speaker:
             self.SPEAKER.set_pitch(NOTES[note])
             self.SPEAKER.update_audio()
             self.SPEAKER.play()
+            self.SPEAKER.wait_done()
 
         except KeyboardInterrupt:
             print("\nSPEAKER: Code interrupted")
