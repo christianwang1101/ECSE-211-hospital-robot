@@ -1,6 +1,7 @@
 from utils import sound
 from utils.sound import NOTES
 import time
+import threading
 
 """
 Speaker Component
@@ -31,6 +32,9 @@ class Speaker:
         self.SPEAKER.stop()
         self.current_note = None  # Reset tracked note
         print("SPEAKER: Stopping speaker")
+
+    def play_async(self, note: str):
+        threading.Thread(target=self.play_note, args=(note,), daemon=True).start()
 
     def cleanup(self):
         self.__stop_note()
