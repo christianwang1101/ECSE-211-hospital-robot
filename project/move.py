@@ -124,7 +124,7 @@ def turn_to_with_gyro(target_angle, speed_dps=SPEED_DPS_TURN, timeout=1.5, wait_
         time.sleep(wait_time)
 
 
-def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
+def sweep(max_sweeps, move_forward_cm, sweep_distance_cm, sweep_distance_cm_right=0):
     """
     Swivels the robot back and forth a max set number of times
     Terminates early when colour sensor detects red or green
@@ -135,6 +135,7 @@ def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
     - true -> GREEN detected (target found)
     - false -> RED detected OR no target found after all sweeps
     """
+    if (sweep_distance_cm_right == 0): sweep_distance_cm_right = sweep_distance_cm
 
     def stop_on_colour():
         # GREEN => success (True), RED => failure (False), anything else => keep scanning (None).
@@ -161,7 +162,7 @@ def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
         state = turn_without_gyro(
             is_left=False,
             speed_dps=dps,
-            distance_cm=sweep_distance_cm,
+            distance_cm=sweep_distance_cm_right,
             stop_condition=stop_on_colour,
         )  # go back to center
         if state is not None:
@@ -179,7 +180,7 @@ def sweep(max_sweeps, move_forward_cm, sweep_distance_cm):
         state = turn_without_gyro(
             is_left=True,
             speed_dps=dps,
-            distance_cm=sweep_distance_cm,
+            distance_cm=sweep_distance_cm_right,
             stop_condition=stop_on_colour,
         )  # go back to center
         if state is not None:

@@ -35,7 +35,8 @@ US_SENSOR = get_ultrasonic_sensor()
 
 def start_navigation():
     try:
-        # pharmacy
+        
+        # pharmacy        
         navigate_pharmacy()
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
@@ -71,12 +72,14 @@ def start_navigation():
 
         # third hallway segment to Room 3
         navigate_hallway(
-            distance_wall=53, straight_angle=0, is_fast=True, us_weight=8, timeout=6
+            distance_wall=53, straight_angle=0, is_fast=True, us_weight=8, timeout=2.2
         )
         turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
         GYRO_SENSOR.reset_angle()
         move_straight(distance_cm=2.7, is_forward=False)  # back out
+        
         navigate_double_room()  # TODO
+        
 
     except KeyboardInterrupt:
         print("\nShutting down...")
@@ -93,14 +96,14 @@ def navigate_pharmacy():
     """
     collect_block()
     move_straight(distance_cm=7.5, is_forward=False)
-    turn_without_gyro(is_left=True, distance_cm=2.4)
+    turn_without_gyro(is_left=True, distance_cm=2.45)
     move_straight(distance_cm=8.2, is_forward=True)
     collect_block()
     move_straight(distance_cm=7, is_forward=False)
     turn_without_gyro(is_left=True, distance_cm=9.3)
 
 
-def navigate_single_room():
+def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
     """
     Navigates the robot through a single-bed room, scanning
     the bed and detecting its position, then dropping off the block if necessary
@@ -110,27 +113,36 @@ def navigate_single_room():
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
     print("navigating single room")
+    #TODO: fix robot seeming to not rotate
+    #TODO: set max sweeps
 
     start_angle = GYRO_SENSOR.get_angle()
     move_forward_cm = 10
-    sweep_distance_cm = 2.6
 
     green_bed_found, num_forward_increments = sweep(
         max_sweeps=5,
         move_forward_cm=move_forward_cm,
         sweep_distance_cm=sweep_distance_cm,
+        sweep_distance_cm_right=sweep_distance_cm_right
     )
     time.sleep(2)
     if green_bed_found:
         print("NAVIGATION.PY - green bed foudn")
         move_straight(9, is_forward=True)
         drop_off()  # drop off block
+    print("num forward increments: " + str(num_forward_increments))
 
-    move_straight(
-        num_forward_increments * move_forward_cm, is_forward=False
-    )  # go backwards to starting position
-
-    turn_to_with_gyro(start_angle)  # reorient back to center
+    if (num_forward_increments >= 3):
+        
+        move_straight(num_forward_increments * (1/3) * move_forward_cm, is_forward=False) # go backwards to starting position
+        
+        turn_to_with_gyro(start_angle)  # reorient back to center
+        move_straight(num_forward_increments * (2/3) * move_forward_cm, is_forward=False)
+    
+    else:
+        move_straight(num_forward_increments * move_forward_cm, is_forward=False) # go backwards to starting position
+        turn_to_with_gyro(start_angle)  # reorient back to center
+        
 
     print("finished navigating single room")
 
@@ -145,7 +157,25 @@ def navigate_double_room():
     for it to be travelling in a straight line. Adjustments to the motor and rotation of the robot
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
-    print("TODO: navigate double room")
+    navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.8)
+    time.sleep(0.5)
+    turn_without_gyro(is_left=False, distance_cm=5)
+    move_straight(distance_cm=34, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm=5)
+    GYRO_SENSOR.reset_angle()
+    time.sleep(0.5)
+    navigate_hallway(distance_wall=5.5, straight_angle=0, us_weight=15, is_fast=False, timeout=6)
+    time.sleep(1)
+    navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.6)
+
+    """
+    turn_without_gyro(is_left=True, distance_cm=10.5)  # turn into room
+    move_straight(distance_cm=6, is_forward=True)
+    turn_without_gyro(is_left=False, distance_cm=10.5)
+    GYRO_SENSOR.reset_angle()
+    navigate_single_room()
+    """
+    
     pass
 
 
@@ -165,6 +195,7 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
     - num_black_lines: number of black lines to count as position milestones
     - straight_angle: target gyro heading for straight travel
     """
+    print("navigating hallway")
     integral = 0.0
     prev_error = None
 
