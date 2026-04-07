@@ -62,7 +62,6 @@ def start_navigation():
         )
         move_straight(distance_cm=5, is_forward=True)  # go forward a bit
         navigate_single_room()
-        move_straight(distance_cm=3, is_forward=False)  # go back a bit
 
         # get into place for second hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
@@ -74,10 +73,11 @@ def start_navigation():
         navigate_hallway(
             distance_wall=55, straight_angle=0, us_weight=10, is_fast=True, timeout=4.8
         )
-        turn_without_gyro(is_left=True, distance_cm=10.5)  # turn into room
+        turn_without_gyro(is_left=True, distance_cm=10.8)  # turn into room
         GYRO_SENSOR.reset_angle()
         time.sleep(1)
         navigate_single_room()
+        move_straight(distance_cm=3, is_forward=False)
 
         # get into place for third hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
@@ -87,13 +87,23 @@ def start_navigation():
 
         # third hallway segment to Room 3
         navigate_hallway(
-            distance_wall=53, straight_angle=0, is_fast=True, us_weight=8, timeout=2.2
+            distance_wall=55, straight_angle=0, is_fast=False, us_weight=10, timeout=5
         )
         turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
         GYRO_SENSOR.reset_angle()
         move_straight(distance_cm=2.7, is_forward=False)  # back out
 
         navigate_double_room()
+
+        # go back to pharmacy
+        turn_without_gyro(is_left=False, distance_cm=10.5)
+        GYRO_SENSOR.reset_angle()
+        time.sleep(0.5)
+        navigate_hallway(
+            distance_wall=53, straight_angle=0, us_weight=10, is_fast=True, timeout=7
+        )
+        turn_without_gyro(is_left=False, distance_cm=10.5)
+        GYRO_SENSOR.reset_angle()
 
     except KeyboardInterrupt:
         print("\nShutting down...")

@@ -15,17 +15,17 @@ RADIUS_WHEEL = 2  # in cm
 # -----------------------------------------------------
 # Block collection motor config
 MOTOR_SETTLE_SECONDS = 0.5
-DISPENSER_MOTOR_TURN_DEGREES = 100
+DISPENSER_MOTOR_TURN_DEGREES = 110
 DISPENSER_MOTOR_DPS = 250
 DISPENSER_MOTOR_DROPOFF_DPS = 120
 
 SCOOPER_MOTOR_TURN_DEGREES = 260
 DISPENSER_MOTOR_DPS_IN = 280
-DISPENSER_MOTOR_DPS_OUT = 100
+DISPENSER_MOTOR_DPS_OUT = 150
 
 # -----------------------------------------------------
 # Navigation config
-SPEED_DPS_STRAIGHT = 200
+SPEED_DPS_STRAIGHT = 400
 
 SPEED_DPS_TURN = 100
 DISTANCE_CM_TURN = 10.5  # for 90 deg turn
