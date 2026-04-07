@@ -204,8 +204,6 @@ def navigate_double_room():
     time.sleep(1)
     navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.7)
 
-    pass
-
 
 def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=None):
     """
@@ -226,6 +224,7 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
     print("navigating hallway")
     integral = 0.0
     prev_error = None
+    last_valid_distance = distance_wall  # fallback when US reading is unreliable
 
     start_time = time.time()
 
@@ -262,7 +261,9 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
 
             # Weighted combined error (degrees and cm normalised by their weights)
             gyro_error = ((angle - straight_angle + 180) % 360) - 180
-            us_error = distance - distance_wall
+            if distance >= 3:
+                last_valid_distance = distance
+            us_error = last_valid_distance - distance_wall
             combined_error = HALLWAY_GYRO_WEIGHT * gyro_error + us_weight * us_error
             print("-------------------------------------")
             print("colour_reading: " + str(colour))
