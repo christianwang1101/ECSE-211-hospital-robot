@@ -52,7 +52,7 @@ def _watch_emergency_stop():
 def start_navigation():
     threading.Thread(target=_watch_emergency_stop, daemon=True).start()
     try:
-        # pharmacy
+        # pharmacy    
         navigate_pharmacy()
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
@@ -104,7 +104,9 @@ def start_navigation():
             distance_wall=53, straight_angle=0, us_weight=10, is_fast=True, timeout=7.5
         )
         turn_without_gyro(is_left=True, distance_cm=10.5)
-        move_straight(distance_cm=25, is_forward=True)
+        move_straight(distance_cm=37, is_forward=True)
+        turn_without_gyro(is_left=False, distance_cm=10.5)
+        
         GYRO_SENSOR.reset_angle()
 
         play_victory_sound()
@@ -154,10 +156,10 @@ def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
     time.sleep(2)
     if green_bed_found:
         print("NAVIGATION.PY - green bed foudn")
-        move_straight(9, is_forward=True)
+        move_straight(11, is_forward=True)
         drop_off()  # drop off block
-        SPEAKER.play_note("C4")
-        move_straight(9, is_forward=False)
+        play_success_sound()
+        move_straight(11, is_forward=False)
     print("num forward increments: " + str(num_forward_increments))
 
     if num_forward_increments >= 3:
@@ -174,10 +176,9 @@ def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
         )
 
     else:
-        move_straight(
-            num_forward_increments * move_forward_cm, is_forward=False
-        )  # go backwards to starting position
-        turn_to_with_gyro(start_angle)  # reorient back to center
+        move_straight(num_forward_increments * move_forward_cm, is_forward=False)  # reorient back to center
+        turn_to_with_gyro(start_angle)
+         # go backwards to starting position
 
     print("finished navigating single room")
 
@@ -262,8 +263,10 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
 
             # Weighted combined error (degrees and cm normalised by their weights)
             gyro_error = ((angle - straight_angle + 180) % 360) - 180
-            if distance >= 250:
+            if distance <= 200:
                 last_valid_distance = distance
+            else: last_valid_distance = 2
+            
             us_error = last_valid_distance - distance_wall
             combined_error = HALLWAY_GYRO_WEIGHT * gyro_error + us_weight * us_error
             print("-------------------------------------")
@@ -378,7 +381,7 @@ def play_victory_sound():
         ("B6", e),
         ("C7", q),
     ]
-    song = Song([Sound(duration=d, pitch=n, volume=90) for n, d in notes])
+    song = Song([Sound(duration=d, pitch=n, volume=100) for n, d in notes])
     song.compile()
     song.play()
     song.wait_done()
@@ -397,11 +400,11 @@ def play_success_sound():
         ("B6", e),
         ("C7", q),
     ]
-    song = Song([Sound(duration=d, pitch=n, volume=90) for n, d in notes])
+    song = Song([Sound(duration=d, pitch=n, volume=100) for n, d in notes])
     song.compile()
     song.play()
     song.wait_done()
 
 
 if __name__ == "__main__":
-    play_success_sound()
+    start_navigation()
