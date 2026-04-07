@@ -51,7 +51,6 @@ def _watch_emergency_stop():
 def start_navigation():
     threading.Thread(target=_watch_emergency_stop, daemon=True).start()
     try:
-        
         # pharmacy
         navigate_pharmacy()
         time.sleep(1)
@@ -63,7 +62,6 @@ def start_navigation():
         )
         move_straight(distance_cm=5, is_forward=True)  # go forward a bit
         navigate_single_room()
-        
 
         # get into place for second hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
@@ -86,21 +84,17 @@ def start_navigation():
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
         print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
-        
-        
+
         # third hallway segment to Room 3
         navigate_hallway(
             distance_wall=55, straight_angle=0, is_fast=False, us_weight=5, timeout=6.20
         )
         turn_without_gyro(is_left=False, distance_cm=10.8)  # turn into room
         GYRO_SENSOR.reset_angle()
-        #move_straight(distance_cm=2.7, is_forward=False)  # back out
-        
-        
+        # move_straight(distance_cm=2.7, is_forward=False)  # back out
 
         navigate_double_room()
-        
-        
+
         # go back to pharmacy
         turn_without_gyro(is_left=False, distance_cm=10.5)
         GYRO_SENSOR.reset_angle()
@@ -111,9 +105,8 @@ def start_navigation():
         turn_without_gyro(is_left=True, distance_cm=10.5)
         move_straight(distance_cm=25, is_forward=True)
         GYRO_SENSOR.reset_angle()
-        
+
         play_victory_sound()
-        
 
     except KeyboardInterrupt:
         print("\nShutting down...")
