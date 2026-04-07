@@ -1,4 +1,5 @@
 from utils.brick import reset_brick
+from utils.sound import Sound, Song
 from config.settings import (
     HALLWAY_BASE_SPEED,
     HALLWAY_MIN_SPEED,
@@ -194,8 +195,8 @@ def navigate_double_room():
     navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.8)
     time.sleep(0.5)
     turn_without_gyro(is_left=False, distance_cm=3.5)
-    move_straight(distance_cm=49, is_forward=False)
-    turn_without_gyro(is_left=True, distance_cm=3.5)
+    move_straight(distance_cm=45, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm=2.5)
     GYRO_SENSOR.reset_angle()
     time.sleep(0.5)
     navigate_hallway(
@@ -261,7 +262,7 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
 
             # Weighted combined error (degrees and cm normalised by their weights)
             gyro_error = ((angle - straight_angle + 180) % 360) - 180
-            if distance >= 3:
+            if distance >= 250:
                 last_valid_distance = distance
             us_error = last_valid_distance - distance_wall
             combined_error = HALLWAY_GYRO_WEIGHT * gyro_error + us_weight * us_error
@@ -333,11 +334,74 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
 
 
 def play_victory_sound():
-    SPEAKER.play_note("C4")
-    SPEAKER.play_note("D4")
-    SPEAKER.play_note("C4")
-    SPEAKER.play_note("E4")
+    # Super Mario Bros course clear fanfare
+    s = 0.085  # sixteenth note (~176 BPM)
+    e = 0.17  # eighth note
+    q = 0.34  # quarter note
+
+    notes = [
+        ("G4", s),
+        ("C5", s),
+        ("E5", s),
+        ("G5", s),
+        ("C5", s),
+        ("E5", s),
+        ("G5", e),
+        ("Ab5", e),
+        ("G5", e),
+        ("Eb5", s),
+        ("Ab5", s),
+        ("C6", s),
+        ("Eb6", s),
+        ("Ab5", s),
+        ("C6", s),
+        ("Eb6", e),
+        ("Bb5", e),
+        ("Eb6", e),
+        ("G6", e),
+        ("Bb5", s),
+        ("Eb6", s),
+        ("G6", s),
+        ("Bb5", s),
+        ("Eb6", s),
+        ("G6", s),
+        ("Bb6", e),
+        ("B5", e),
+        ("E6", e),
+        ("G#6", e),
+        ("B5", s),
+        ("E6", s),
+        ("G#6", s),
+        ("B5", s),
+        ("E6", s),
+        ("G#6", s),
+        ("B6", e),
+        ("C7", q),
+    ]
+    song = Song([Sound(duration=d, pitch=n, volume=90) for n, d in notes])
+    song.compile()
+    song.play()
+    song.wait_done()
+
+
+def play_success_sound():
+    # Super Mario Bros course clear fanfare
+    s = 0.085  # sixteenth note (~176 BPM)
+    e = 0.17  # eighth note
+    q = 0.34  # quarter note
+
+    notes = [
+        ("B5", s),
+        ("E6", s),
+        ("G#6", s),
+        ("B6", e),
+        ("C7", q),
+    ]
+    song = Song([Sound(duration=d, pitch=n, volume=90) for n, d in notes])
+    song.compile()
+    song.play()
+    song.wait_done()
 
 
 if __name__ == "__main__":
-    start_navigation()
+    play_success_sound()
