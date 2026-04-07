@@ -7,7 +7,7 @@ Controls the start and emergency stop
 """
 
 
-class TouchSensor:
+class EmergencyStop:
     def __init__(self):
         self.STOP_SENSOR = TouchSensor(PORT_TOUCH_SENSOR_STOP)
 

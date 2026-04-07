@@ -25,7 +25,7 @@ from move import (
     sweep,
 )
 from components.speaker import Speaker
-from project.components.touch_sensor import TouchSensor
+from components.touch_sensor import EmergencyStop
 
 import time
 import threading
@@ -36,7 +36,7 @@ COLOUR_SENSOR = get_colour_sensor()
 GYRO_SENSOR = get_gyro_sensor()
 US_SENSOR = get_ultrasonic_sensor()
 SPEAKER = Speaker()
-EMERGENCY_STOP = TouchSensor()
+EMERGENCY_STOP = EmergencyStop()
 
 
 def _watch_emergency_stop():
@@ -51,6 +51,7 @@ def _watch_emergency_stop():
 def start_navigation():
     threading.Thread(target=_watch_emergency_stop, daemon=True).start()
     try:
+        
         # pharmacy
         navigate_pharmacy()
         time.sleep(1)
@@ -62,6 +63,7 @@ def start_navigation():
         )
         move_straight(distance_cm=5, is_forward=True)  # go forward a bit
         navigate_single_room()
+        
 
         # get into place for second hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
@@ -73,7 +75,7 @@ def start_navigation():
         navigate_hallway(
             distance_wall=55, straight_angle=0, us_weight=10, is_fast=True, timeout=4.8
         )
-        turn_without_gyro(is_left=True, distance_cm=10.8)  # turn into room
+        turn_without_gyro(is_left=True, distance_cm=11)  # turn into room
         GYRO_SENSOR.reset_angle()
         time.sleep(1)
         navigate_single_room()
@@ -84,26 +86,34 @@ def start_navigation():
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
         print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
-
+        
+        
         # third hallway segment to Room 3
         navigate_hallway(
-            distance_wall=55, straight_angle=0, is_fast=False, us_weight=10, timeout=5
+            distance_wall=55, straight_angle=0, is_fast=False, us_weight=5, timeout=6.20
         )
-        turn_without_gyro(is_left=False, distance_cm=10.5)  # turn into room
+        turn_without_gyro(is_left=False, distance_cm=10.8)  # turn into room
         GYRO_SENSOR.reset_angle()
-        move_straight(distance_cm=2.7, is_forward=False)  # back out
+        #move_straight(distance_cm=2.7, is_forward=False)  # back out
+        
+        
 
         navigate_double_room()
-
+        
+        
         # go back to pharmacy
         turn_without_gyro(is_left=False, distance_cm=10.5)
         GYRO_SENSOR.reset_angle()
         time.sleep(0.5)
         navigate_hallway(
-            distance_wall=53, straight_angle=0, us_weight=10, is_fast=True, timeout=7
+            distance_wall=53, straight_angle=0, us_weight=10, is_fast=True, timeout=7.5
         )
-        turn_without_gyro(is_left=False, distance_cm=10.5)
+        turn_without_gyro(is_left=True, distance_cm=10.5)
+        move_straight(distance_cm=25, is_forward=True)
         GYRO_SENSOR.reset_angle()
+        
+        play_victory_sound()
+        
 
     except KeyboardInterrupt:
         print("\nShutting down...")
@@ -153,14 +163,18 @@ def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
         move_straight(9, is_forward=True)
         drop_off()  # drop off block
         SPEAKER.play_note("C4")
+        move_straight(9, is_forward=False)
     print("num forward increments: " + str(num_forward_increments))
 
     if num_forward_increments >= 3:
+        print("adjusting before moving backwards")
         move_straight(
             num_forward_increments * (1 / 3) * move_forward_cm, is_forward=False
         )  # go backwards to starting position
+        time.sleep(0.5)
 
         turn_to_with_gyro(start_angle)  # reorient back to center
+        time.sleep(0.5)
         move_straight(
             num_forward_increments * (2 / 3) * move_forward_cm, is_forward=False
         )
@@ -186,24 +200,16 @@ def navigate_double_room():
     """
     navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.8)
     time.sleep(0.5)
-    turn_without_gyro(is_left=False, distance_cm=5)
-    move_straight(distance_cm=34, is_forward=False)
-    turn_without_gyro(is_left=True, distance_cm=5)
+    turn_without_gyro(is_left=False, distance_cm=3.5)
+    move_straight(distance_cm=49, is_forward=False)
+    turn_without_gyro(is_left=True, distance_cm=3.5)
     GYRO_SENSOR.reset_angle()
     time.sleep(0.5)
     navigate_hallway(
-        distance_wall=5.5, straight_angle=0, us_weight=15, is_fast=False, timeout=6
+        distance_wall=6, straight_angle=0, us_weight=15, is_fast=False, timeout=7
     )
     time.sleep(1)
-    navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.6)
-
-    """
-    turn_without_gyro(is_left=True, distance_cm=10.5)  # turn into room
-    move_straight(distance_cm=6, is_forward=True)
-    turn_without_gyro(is_left=False, distance_cm=10.5)
-    GYRO_SENSOR.reset_angle()
-    navigate_single_room()
-    """
+    navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.7)
 
     pass
 

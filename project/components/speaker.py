@@ -9,8 +9,8 @@ Handles audio output for the digital flute
 """
 
 class Speaker:
-    def __init__(self, default_pitch="A4", default_duration=0.2):
-        self.SPEAKER = sound.Sound(duration=default_duration, pitch=default_pitch, volume=60)
+    def __init__(self, default_pitch="A4", default_duration=1):
+        self.SPEAKER = sound.Sound(duration=default_duration, pitch=default_pitch, volume=200)
         self.current_note = None  # Track currently playing note
         print("SPEAKER: Initialized speaker")
         
@@ -32,9 +32,6 @@ class Speaker:
         self.SPEAKER.stop()
         self.current_note = None  # Reset tracked note
         print("SPEAKER: Stopping speaker")
-
-    def play_async(self, note: str):
-        threading.Thread(target=self.play_note, args=(note,), daemon=True).start()
 
     def cleanup(self):
         self.__stop_note()
