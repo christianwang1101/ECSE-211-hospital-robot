@@ -55,16 +55,16 @@ def turn_without_gyro(
     - stop_condition: optional callable; if it returns a non-None value mid-turn, motors
       stop and the function returns that value (early exit). Returns None on normal completion.
     """
-    linear_speed = RADIUS_WHEEL * math.radians(speed_dps)  # cm/s
+    linear_speed = RADIUS_WHEEL * math.radians(speed_dps*2)  # cm/s
     duration = distance_cm / linear_speed
     poll_interval = 0.01
 
     if is_left:
-        LEFT_MOTOR.set_dps(-speed_dps)
-        RIGHT_MOTOR.set_dps(speed_dps)
+        LEFT_MOTOR.set_dps(-speed_dps*2) # added times 2 1:34
+        RIGHT_MOTOR.set_dps(speed_dps*2)
     else:
-        LEFT_MOTOR.set_dps(speed_dps)
-        RIGHT_MOTOR.set_dps(-speed_dps)
+        LEFT_MOTOR.set_dps(speed_dps*2)
+        RIGHT_MOTOR.set_dps(-speed_dps*2)
 
     elapsed = 0.0
     while elapsed < duration:

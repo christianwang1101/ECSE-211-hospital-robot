@@ -1,19 +1,20 @@
 from utils import sound
 from utils.sound import NOTES
-import time
-import threading
 
 """
 Speaker Component
 Handles audio output for the digital flute
 """
 
+
 class Speaker:
     def __init__(self, default_pitch="A4", default_duration=1):
-        self.SPEAKER = sound.Sound(duration=default_duration, pitch=default_pitch, volume=200)
+        self.SPEAKER = sound.Sound(
+            duration=default_duration, pitch=default_pitch, volume=200
+        )
         self.current_note = None  # Track currently playing note
         print("SPEAKER: Initialized speaker")
-        
+
     def play_note(self, note: str):
         print(f"SPEAKER: Playing note: {note}")
         self.current_note = note
