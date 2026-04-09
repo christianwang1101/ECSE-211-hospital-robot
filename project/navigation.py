@@ -52,7 +52,7 @@ def _watch_emergency_stop():
 def start_navigation():
     threading.Thread(target=_watch_emergency_stop, daemon=True).start()
     try:
-        # pharmacy    
+        # pharmacy
         navigate_pharmacy()
         time.sleep(1)
         GYRO_SENSOR.reset_angle()
@@ -66,7 +66,7 @@ def start_navigation():
 
         # get into place for second hallway segment
         turn_without_gyro(is_left=False, distance_cm=10.5)
-        time.sleep(1)
+        # time.sleep(1)
         GYRO_SENSOR.reset_angle()
         print("gyro reading: " + str(GYRO_SENSOR.get_angle()))
 
@@ -76,8 +76,8 @@ def start_navigation():
         )
         turn_without_gyro(is_left=True, distance_cm=11)  # turn into room
         GYRO_SENSOR.reset_angle()
-        time.sleep(1)
-        navigate_single_room()
+        # time.sleep(1)
+        navigate_single_room(sweep_distance_cm_right=2.8)
         move_straight(distance_cm=3, is_forward=False)
 
         # get into place for third hallway segment
@@ -99,14 +99,19 @@ def start_navigation():
         # go back to pharmacy
         turn_without_gyro(is_left=False, distance_cm=10.5)
         GYRO_SENSOR.reset_angle()
-        time.sleep(0.5)
+        # time.sleep(0.5)
         navigate_hallway(
-            distance_wall=53, straight_angle=0, us_weight=10, is_fast=True, timeout=7.5
+            distance_wall=53,
+            straight_angle=0,
+            us_weight=10,
+            is_fast=True,
+            timeout=7.5,
+            stop_at_orange=False,
         )
-        turn_without_gyro(is_left=True, distance_cm=10.5)
-        move_straight(distance_cm=37, is_forward=True)
         turn_without_gyro(is_left=False, distance_cm=10.5)
-        
+        move_straight(distance_cm=48, is_forward=False)
+        turn_without_gyro(is_left=True, distance_cm=10.5)
+
         GYRO_SENSOR.reset_angle()
 
         play_victory_sound()
@@ -125,7 +130,7 @@ def navigate_pharmacy():
     """
     collect_block()
     move_straight(distance_cm=7.5, is_forward=False)
-    turn_without_gyro(is_left=True, distance_cm=2.45)
+    turn_without_gyro(is_left=True, distance_cm=2.35)  # was 2.45
     move_straight(distance_cm=8.2, is_forward=True)
     collect_block()
     move_straight(distance_cm=7, is_forward=False)
@@ -155,30 +160,39 @@ def navigate_single_room(sweep_distance_cm=2.6, sweep_distance_cm_right=0):
     )
     time.sleep(2)
     if green_bed_found:
+        turn_without_gyro(is_left=False, distance_cm=0.9)  # added turn # was 1
         print("NAVIGATION.PY - green bed foudn")
-        move_straight(11, is_forward=True)
+        if num_forward_increments >= 3:
+            straight_distance = 8
+        else:
+            straight_distance = 11
+
+        move_straight(straight_distance, is_forward=True)
         drop_off()  # drop off block
         play_success_sound()
-        move_straight(11, is_forward=False)
+        move_straight(straight_distance, is_forward=False)
     print("num forward increments: " + str(num_forward_increments))
 
-    if num_forward_increments >= 3:
+    if num_forward_increments >= 1:  # if num sweeps 3 or greater # was 2
         print("adjusting before moving backwards")
         move_straight(
             num_forward_increments * (1 / 3) * move_forward_cm, is_forward=False
         )  # go backwards to starting position
-        time.sleep(0.5)
+        print("--------------- go back to starting position ------")
+        # time.sleep(0.5)
 
         turn_to_with_gyro(start_angle)  # reorient back to center
-        time.sleep(0.5)
+        # time.sleep(0.5)
         move_straight(
             num_forward_increments * (2 / 3) * move_forward_cm, is_forward=False
         )
 
     else:
-        move_straight(num_forward_increments * move_forward_cm, is_forward=False)  # reorient back to center
+        move_straight(
+            num_forward_increments * move_forward_cm, is_forward=False
+        )  # reorient back to center
         turn_to_with_gyro(start_angle)
-         # go backwards to starting position
+        # go backwards to starting position
 
     print("finished navigating single room")
 
@@ -194,12 +208,12 @@ def navigate_double_room():
     would be based of this paramter to make sure the robot is swivelling relative to the straight angle
     """
     navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.8)
-    time.sleep(0.5)
+    # time.sleep(0.5)
     turn_without_gyro(is_left=False, distance_cm=3.5)
     move_straight(distance_cm=45, is_forward=False)
     turn_without_gyro(is_left=True, distance_cm=2.5)
     GYRO_SENSOR.reset_angle()
-    time.sleep(0.5)
+    # time.sleep(0.5)
     navigate_hallway(
         distance_wall=6, straight_angle=0, us_weight=15, is_fast=False, timeout=7
     )
@@ -207,7 +221,9 @@ def navigate_double_room():
     navigate_single_room(sweep_distance_cm=2, sweep_distance_cm_right=2.7)
 
 
-def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=None):
+def navigate_hallway(
+    distance_wall, straight_angle, us_weight, is_fast, timeout=None, stop_at_orange=True
+):
     """
     Navigates the robot through the hallways of the obstacle course using a PID
     controller that fuses gyro heading and left-wall US distance into a single
@@ -256,7 +272,8 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
                 continue
 
             # Enter room on orange line
-            if colour == "ORANGE":
+            if stop_at_orange and colour == "ORANGE":
+                move_straight(distance_cm=5, is_forward=True)
                 stop_motors()
                 print("detected orange - stop")
                 return
@@ -265,10 +282,12 @@ def navigate_hallway(distance_wall, straight_angle, us_weight, is_fast, timeout=
             gyro_error = ((angle - straight_angle + 180) % 360) - 180
             if distance <= 200:
                 last_valid_distance = distance
-            else: last_valid_distance = 2
-            
+            else:
+                last_valid_distance = 2
+
             us_error = last_valid_distance - distance_wall
             combined_error = HALLWAY_GYRO_WEIGHT * gyro_error + us_weight * us_error
+
             print("-------------------------------------")
             print("colour_reading: " + str(colour))
             print("gyro_reading: " + str(angle))

@@ -54,18 +54,21 @@ def spin_dispeser_motor_once():
             f"Turning second motor on port {PORT_MOTOR_DISPENSER} by {DISPENSER_MOTOR_TURN_DEGREES} degrees at {DISPENSER_MOTOR_DPS} dps..."
         )
         dispenser_motor.set_position_relative(-70)
-        time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        time.sleep(seconds)
+#         time.sleep(seconds + MOTOR_SETTLE_SECONDS)
         
         dispenser_motor.set_limits(dps= 150)
         
         dispenser_motor.set_position_relative(45)
-        time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        time.sleep(seconds)
+#         time.sleep(seconds +MOTOR_SETTLE_SECONDS)
         
         
         dispenser_motor.set_limits(dps= 150)
         
         dispenser_motor.set_position_relative(-69)
-        time.sleep(seconds + MOTOR_SETTLE_SECONDS)
+        time.sleep(seconds)
+#         time.sleep(seconds + MOTOR_SETTLE_SECONDS)
         
 
         print("Stored block.")
